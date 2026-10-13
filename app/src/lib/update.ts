@@ -11,6 +11,7 @@ import { cacheRoot, OS, unzip } from "./platform";
 
 const run = promisify(execFile);
 const RELEASES = "https://api.github.com/repos/Zfinix/eleven/releases";
+const MIRROR = "https://dl.chizi.app";
 const STAGE = join(cacheRoot(), "update");
 const STAGED_APP = join(STAGE, "next", "Eleven.app");
 const STAGED_VERSION = join(STAGE, "version");
@@ -23,8 +24,25 @@ function runningApp(): string | null {
   return OS === "mac" && app.endsWith(".app") ? app : null;
 }
 
+/** Cloudflare's copy of the latest stable release, which downloads much faster than GitHub's. */
+async function mirroredRelease(): Promise<Release | null> {
+  try {
+    const response = await fetch(`${MIRROR}/latest.json`);
+    if (!response.ok) return null;
+    const json: unknown = await response.json();
+    if (!isRecord(json) || typeof json.version !== "string") return null;
+    const url = `${MIRROR}/v${json.version}/Eleven-${json.version}-${ARCH}.zip`;
+    const head = await fetch(url, { method: "HEAD" });
+    return head.ok ? { version: json.version, url } : null;
+  } catch {
+    return null;
+  }
+}
+
 async function latestRelease(): Promise<Release | null> {
   const beta = currentSettings().updateChannel === "Beta";
+  const mirrored = beta ? null : await mirroredRelease();
+  if (mirrored) return mirrored;
   const response = await fetch(beta ? `${RELEASES}?per_page=1` : `${RELEASES}/latest`, { headers: { Accept: "application/vnd.github+json" } });
   if (!response.ok) return null;
   const json: unknown = await response.json();
