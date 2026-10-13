@@ -57,5 +57,12 @@ export async function readCoreMl(dir: string): Promise<ModelInfo> {
     outputs: tensors(meta.outputSchema),
     layers: layers.length > 0 ? layers : histogram(meta),
     risk: null,
+    tensors: [],
+    mix: [],
+    metadata: Object.entries(meta).flatMap(([key, value]) => (typeof value === "string" || typeof value === "number" ? [{ key, value: String(value) }] : [])),
+    template: null,
+    loads: [],
+    nodes: [],
+    size: 0,
   };
 }

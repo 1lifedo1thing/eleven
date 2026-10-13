@@ -137,8 +137,10 @@ function Settings({ thread, pill, compact }: { readonly thread: Thread; readonly
 }
 
 /** The prompt: the file and agent above, then the draft with mode, model, memory use and send, the / palette and the @ picker. */
-export function Composer({ place, target, agents, thread, onAttach, onDetach, onPickAgent, mention = null, mentions = NO_MENTIONS, slot = null, seed = null, queued = false, blocked = false }: {
+export function Composer({ place, target, agents, thread, onAttach, onDetach, onPickAgent, mention = null, mentions = NO_MENTIONS, slot = null, seed = null, queued = false, blocked = false, hint = null }: {
   readonly place: ComposerPlace;
+  /** Replaces the place's usual placeholder, for files that aren't code. */
+  readonly hint?: string | null;
   /** The function in focus, sent along as @name unless you remove it. */
   readonly mention?: string | null;
   /** What @ can point at in the open file. */
@@ -287,7 +289,7 @@ export function Composer({ place, target, agents, thread, onAttach, onDetach, on
           value={draft}
           minRows={place === "landing" ? 3 : 1}
           maxRows={12}
-          placeholder={thread.busy ? "Queue another message…" : about ? "Ask about this function, or tell the agent what to find" : PLACEHOLDER[place]}
+          placeholder={thread.busy ? "Queue another message…" : about ? "Ask about this function, or tell the agent what to find" : (hint ?? PLACEHOLDER[place])}
           onChange={(e) => onChange(e.value ?? "")}
           onKeyDown={onKeyDown}
           {...(commandReturn ? {} : { onSubmit: submit })}

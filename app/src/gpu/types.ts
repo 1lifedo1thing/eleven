@@ -18,9 +18,30 @@ export type Tensor =
   | { readonly kind: "image"; readonly name: string; readonly shape: readonly number[] }
   | { readonly kind: "tensor"; readonly name: string; readonly shape: readonly number[] };
 
+/** The views of one model file in its workbench tab. */
+export const MODEL_PAGES = ["overview", "tensors", "nodes", "metadata", "template", "loads"] as const;
+
+export type ModelPage = (typeof MODEL_PAGES)[number];
+
 export type ModelLayer = { readonly name: string; readonly op: string; readonly shape: string; readonly type: string };
 
 export type ModelRisk = { readonly title: string; readonly detail: string };
+
+/** One stored tensor; `offset` is from the start of the file's data section, null when the format doesn't say. */
+export type ModelTensor = { readonly name: string; readonly shape: string; readonly type: string; readonly bytes: number; readonly offset: number | null };
+
+/** How much of the file one weight type takes. */
+export type TypeShare = { readonly type: string; readonly bytes: number; readonly tensors: number };
+
+/** One operator in a model's graph, wired by the names of the values it reads and writes. */
+export type ModelNode = { readonly name: string; readonly op: string; readonly domain: string; readonly inputs: readonly string[]; readonly outputs: readonly string[] };
+
+export type MetaEntry = { readonly key: string; readonly value: string };
+
+export type LoadEffect = "data" | "layer" | "class" | "runs code";
+
+/** A Python name a pickle imports when it loads, and what that does. */
+export type PickleName = { readonly name: string; readonly from: string; readonly effect: LoadEffect };
 
 export type ModelInfo = {
   readonly name: string;
@@ -30,6 +51,13 @@ export type ModelInfo = {
   readonly outputs: readonly Tensor[];
   readonly layers: readonly ModelLayer[];
   readonly risk: ModelRisk | null;
+  readonly tensors: readonly ModelTensor[];
+  readonly mix: readonly TypeShare[];
+  readonly metadata: readonly MetaEntry[];
+  readonly template: string | null;
+  readonly loads: readonly PickleName[];
+  readonly nodes: readonly ModelNode[];
+  readonly size: number;
 };
 
 export type SpanTone = "cpu" | "wait" | "kernel" | "light";

@@ -44,10 +44,9 @@ export function Home({ chat, routes }: { readonly chat: Chat; readonly routes: H
   );
   const openProject = (entry: ProjectEntry): void => {
     const opened = chat.openProject(entry);
-    if (opened && (opened.kind === "binary" || opened.kind === "app")) routes.onWorkbench(opened);
+    if (opened) routes.onWorkbench(opened);
   };
   const toWorkbench = (next: Target): void => {
-    if (next.kind !== "binary" && next.kind !== "app") return;
     setProjectsOpen(false);
     routes.onWorkbench(next);
   };
@@ -70,7 +69,7 @@ export function Home({ chat, routes }: { readonly chat: Chat; readonly routes: H
   return (
     <Shell side={side} overlay={overlay} onDrop={(e) => e.paths?.[0] && drop(e.paths[0])}>
       <div style={{ display: "flex", flexGrow: 1, minHeight: 0 }}>
-        {projectsOpen ? <ProjectsPage chat={chat} onOpen={(next) => { setProjectsOpen(false); routes.onWorkbench(next); }} /> : messages.length === 0 ? <Landing composer={composer} file={target?.name ?? null} onSuggest={thread.send} showSuggestions={settings.showSuggestions} /> : <Conversation thread={thread} title={chatTitle(chat) ?? ""} agentName={agents.selected.name} composer={composer} onWorkbench={target && (target.kind === "binary" || target.kind === "app") ? () => routes.onWorkbench(target) : null} />}
+        {projectsOpen ? <ProjectsPage chat={chat} onOpen={(next) => { setProjectsOpen(false); routes.onWorkbench(next); }} /> : messages.length === 0 ? <Landing composer={composer} file={target?.name ?? null} model={target?.kind === "model"} onSuggest={thread.send} showSuggestions={settings.showSuggestions} /> : <Conversation thread={thread} title={chatTitle(chat) ?? ""} agentName={agents.selected.name} composer={composer} onWorkbench={target ? () => routes.onWorkbench(target) : null} />}
         {canvasOpen && tabs.length > 0 && <Canvas tabs={tabs} active={active} target={target} onSelect={thread.selectTab} onLink={thread.openFunction} onWorkbench={target ? () => routes.onWorkbench(target) : null} onClose={thread.closeCanvas} />}
       </div>
     </Shell>

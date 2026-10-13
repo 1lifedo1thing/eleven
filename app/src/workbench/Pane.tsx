@@ -13,7 +13,9 @@ import { EmptyPane, HexView, TableView } from "./Lists";
 import { Listing } from "./Listing";
 import { SourceView } from "./SourceView";
 import { LiveThread } from "./LiveThread";
-import type { CodeMode, Tab } from "./model";
+import type { CodeMode, ModelPage, Tab } from "./model";
+import { pageIcon, pageLabel, pagesOf } from "../gpu/models/facts";
+import { pageOwnsScroll } from "../gpu/ModelView";
 import { useSize } from "../lib/useSize";
 import { TYPING } from "../lib/shortcuts";
 import { goTo } from "./actions";
@@ -79,6 +81,27 @@ function ModeBar({ pane, addr, view, width }: { readonly pane: number; readonly 
   );
 }
 
+/** The pages of the model in this tab, switched like a function's views. */
+function ModelBar({ name, page, width }: { readonly name: string; readonly page: ModelPage; readonly width: number }): ReactElement | null {
+  const { p } = useTheme();
+  const { wb, gpuData } = useBench();
+  const model = gpuData.kind === "ready" ? gpuData.value.models.find((m) => m.name === name) : undefined;
+  if (!model) return null;
+  const pages = pagesOf(model);
+  if (pages.length < 2) return null;
+  const words = width === 0 || width >= WORDS_FROM;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, height: 34, flexShrink: 0, paddingLeft: 10, paddingRight: 8, overflow: "hidden" }}>
+      <Spacer />
+      <div role="radiogroup" aria-label="Model view" style={{ display: "flex", flexShrink: 0, gap: 2, padding: 2, borderRadius: 8, backgroundColor: p.fill }}>
+        {pages.map((m) => (
+          <SegItem key={m} label={pageLabel(m)} name={`${pageLabel(m)} view`} icon={pageIcon(m)} words={words} on={m === page} onBg={p.sel2} padding={words ? 9 : 6} onClick={() => wb.open({ kind: "model", name, page: m }, false)} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ThreadView(): ReactElement {
   const { chat } = useBench();
   return (
@@ -115,7 +138,7 @@ function Body({ tab }: { readonly tab: Tab | undefined }): ReactElement {
     case "shader":
       return <ShaderTab library={tab.library} name={tab.name} />;
     case "model":
-      return <ModelTab name={tab.name} />;
+      return <ModelTab name={tab.name} page={tab.page} tensor={tab.tensor} />;
     case "profile":
       return <ProfileTab title={tab.title} />;
     case "diff":
@@ -137,6 +160,7 @@ function Body({ tab }: { readonly tab: Tab | undefined }): ReactElement {
 
 function ownsScroll(tab: Tab | undefined): boolean {
   if (tab?.kind === "list" || tab?.kind === "listing" || tab?.kind === "thread") return true;
+  if (tab?.kind === "model") return pageOwnsScroll(tab.page);
   if (tab?.kind === "tool") return fillsSpace(tab.tool);
   return tab?.kind === "fn" && tab.view !== "hex";
 }
@@ -151,6 +175,7 @@ export function Pane({ index }: { readonly index: number }): ReactElement {
     <div ref={ref} role="region" aria-label="Editor" style={{ display: "flex", flexDirection: "column", flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0, minHeight: 0 }}>
       <TabBar pane={index} />
       {tab?.kind === "fn" && <ModeBar pane={index} addr={tab.addr} view={tab.view} width={width} />}
+      {tab?.kind === "model" && <ModelBar name={tab.name} page={tab.page} width={width} />}
       <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, minHeight: 0, overflow: ownsScroll(tab) ? "hidden" : "scroll" }}>
         <Body tab={tab} />
       </div>

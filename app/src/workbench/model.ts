@@ -1,4 +1,5 @@
 import type { CodeType } from "../engine/codeTypes";
+import type { ModelPage } from "../gpu/types";
 import type { Tool } from "./dockOrder";
 import type { Dossier } from "../engine/dossier";
 
@@ -11,12 +12,14 @@ export type CodeMode = "pseudo" | "asm" | "graph" | "hex";
 
 export type ListKind = "strings" | "imports" | "segments";
 
+export { MODEL_PAGES, type ModelPage } from "../gpu/types";
+
 export type Tab =
   | { readonly kind: "fn"; readonly id: string; readonly addr: string; readonly view: CodeMode; readonly preview: boolean }
   | { readonly kind: "thread"; readonly id: string; readonly thread: string; readonly preview: boolean }
   | { readonly kind: "list"; readonly id: string; readonly list: ListKind; readonly preview: boolean }
   | { readonly kind: "shader"; readonly id: string; readonly library: string; readonly name: string; readonly preview: boolean }
-  | { readonly kind: "model"; readonly id: string; readonly name: string; readonly preview: boolean }
+  | { readonly kind: "model"; readonly id: string; readonly name: string; readonly page: ModelPage; readonly tensor: string | null; readonly preview: boolean }
   | { readonly kind: "profile"; readonly id: string; readonly title: string; readonly preview: boolean }
   | { readonly kind: "diff"; readonly id: string; readonly preview: boolean }
   | { readonly kind: "debug"; readonly id: string; readonly preview: boolean }
@@ -29,7 +32,7 @@ export type TabTarget =
   | { readonly kind: "thread"; readonly thread: string }
   | { readonly kind: "list"; readonly list: ListKind }
   | { readonly kind: "shader"; readonly library: string; readonly name: string }
-  | { readonly kind: "model"; readonly name: string }
+  | { readonly kind: "model"; readonly name: string; readonly page?: ModelPage; readonly tensor?: string | null }
   | { readonly kind: "profile"; readonly title: string }
   | { readonly kind: "diff" }
   | { readonly kind: "debug" }

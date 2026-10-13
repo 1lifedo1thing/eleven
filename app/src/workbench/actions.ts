@@ -147,7 +147,7 @@ function targetOf(b: Bench, subject: Subject): TabTarget | null {
         case "shader":
           return { kind: "shader", library: tab.library, name: tab.name };
         case "model":
-          return { kind: "model", name: tab.name };
+          return { kind: "model", name: tab.name, page: tab.page, tensor: tab.tensor };
         case "profile":
           return { kind: "profile", title: tab.title };
         case "diff":

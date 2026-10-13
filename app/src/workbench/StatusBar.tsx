@@ -7,7 +7,7 @@ import { useLoaded } from "../lib/useLoaded";
 import { useTheme } from "../theme";
 import { Dot, Icon, Spacer } from "../components/ui";
 import { fileOffset } from "./patch";
-import { HOVER, MONO_STYLE, useBench } from "./parts";
+import { HOVER, isModelBench, MONO_STYLE, useBench } from "./parts";
 import { currentAddr, placeIn } from "./where";
 
 function analysis(total: number, opening: boolean): string {
@@ -16,7 +16,31 @@ function analysis(total: number, opening: boolean): string {
 }
 
 /** The status bar: analysis state, engine and arch, then exactly where you are and the details toggle. */
+/** A model has no engine or addresses: just what was read from its headers. */
+function ModelStatus(): ReactElement {
+  const { p } = useTheme();
+  const { gpuData } = useBench();
+  const model = gpuData.kind === "ready" ? gpuData.value.models[0] : undefined;
+  const read = gpuData.kind === "loading" ? "Reading the headers…" : model ? `Read the headers, ${model.tensors.length.toLocaleString("en-US")} tensors` : "Eleven can't read this kind of model yet";
+  return (
+    <div role="contentinfo" aria-label="Status" style={{ display: "flex", alignItems: "center", gap: 14, height: 28, flexShrink: 0, paddingLeft: 10, paddingRight: 10, borderTopWidth: 1, borderColor: p.fill, fontSize: 11.5, color: p.muted, whiteSpace: "nowrap", overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <Dot color={gpuData.kind === "loading" ? p.data : p.string} size={6} />
+        <div>{read}</div>
+      </div>
+      {model && <div>{model.format.split(" · ")[0] ?? model.format}</div>}
+      <Spacer />
+      <div>Nothing was loaded or run</div>
+    </div>
+  );
+}
+
 export function StatusBar(): ReactElement {
+  const bench = useBench();
+  return isModelBench(bench) ? <ModelStatus /> : <CodeStatus />;
+}
+
+function CodeStatus(): ReactElement {
   const { p } = useTheme();
   const bench = useBench();
   const { wb, focusAddr, program, nameOf } = bench;

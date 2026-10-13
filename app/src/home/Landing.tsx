@@ -3,12 +3,15 @@ import type { ReactElement, ReactNode } from "react";
 import { useTheme } from "../theme";
 import { appIcon, Icon, Row } from "../components/ui";
 
-function suggestions(file: string | null): readonly { readonly kind: string; readonly icon: string; readonly text: string; readonly ask: string }[] {
+function suggestions(file: string | null, model: boolean): readonly { readonly kind: string; readonly icon: string; readonly text: string; readonly ask: string }[] {
   const binary = file ?? "/bin/ls";
+  const first = model && file
+    ? { kind: "Model", icon: "model", text: `What is in ${file}, and is it safe to load?`, ask: `What is in ${file}, and is it safe to load?` }
+    : { kind: "Binary", icon: "binary", text: `What does ${binary} do when it starts?`, ask: `What does ${binary} do when it starts, and where does it print its usage?` };
   return [
-    { kind: "Binary", icon: "binary", text: `What does ${binary} do when it starts?`, ask: `What does ${binary} do when it starts, and where does it print its usage?` },
+    first,
     { kind: "App", icon: "app", text: "How does Notes save attachments?", ask: "How does Notes save attachments?" },
-    { kind: "Model", icon: "model", text: "Is this .pt file safe to load?", ask: "Is this .pt file safe to load?" },
+    ...(model ? [{ kind: "Binary", icon: "binary", text: "What does /bin/ls do when it starts?", ask: "What does /bin/ls do when it starts, and where does it print its usage?" }] : [{ kind: "Model", icon: "model", text: "Is this .pt file safe to load?", ask: "Is this .pt file safe to load?" }]),
     { kind: "Shader", icon: "gpu", text: "Why is this blur shader slow?", ask: "Why is this blur shader slow?" },
   ];
 }
@@ -33,7 +36,7 @@ function Suggestion({ kind, icon, text, ask, onPick }: {
 }
 
 /** The first screen: one question, one composer, four ways in. */
-export function Landing({ composer, file, onSuggest, showSuggestions = true }: { readonly composer: ReactNode; readonly file: string | null; readonly onSuggest: (text: string) => void; readonly showSuggestions?: boolean }): ReactElement {
+export function Landing({ composer, file, model = false, onSuggest, showSuggestions = true }: { readonly composer: ReactNode; readonly file: string | null; readonly model?: boolean; readonly onSuggest: (text: string) => void; readonly showSuggestions?: boolean }): ReactElement {
   const { p } = useTheme();
   return (
     <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, alignItems: "center", justifyContent: "center", paddingTop: 32, paddingLeft: 24, paddingRight: 24, paddingBottom: 64 }}>
@@ -42,7 +45,7 @@ export function Landing({ composer, file, onSuggest, showSuggestions = true }: {
       {composer}
       {showSuggestions && (
         <div style={{ display: "grid", gridTemplateColumns: 2, gap: 10, marginTop: 16, width: "100%", maxWidth: 700 }}>
-          {suggestions(file).map((s) => (
+          {suggestions(file, model).map((s) => (
             <Suggestion key={s.kind} kind={s.kind} icon={s.icon} text={s.text} ask={s.ask} onPick={onSuggest} />
           ))}
         </div>

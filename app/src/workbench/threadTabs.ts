@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { listOf, readOr } from "../lib/schema";
 import { supportPath } from "../lib/support";
-import type { Pane, Tab } from "./model";
+import { MODEL_PAGES, type Pane, type Tab } from "./model";
 import { fits, type PaneTree, rowOf } from "./paneTree";
 
 const THREAD_TABS = supportPath("thread-tabs");
@@ -23,7 +23,7 @@ const TAB: z.ZodType<Tab> = z.discriminatedUnion("kind", [
   z.object({ ...ID, kind: z.literal("fn"), addr: z.string(), view: z.enum(["pseudo", "asm", "graph", "hex"]) }),
   z.object({ ...ID, kind: z.literal("list"), list: z.enum(["strings", "imports", "segments"]) }),
   z.object({ ...ID, kind: z.literal("shader"), library: z.string(), name: z.string() }),
-  z.object({ ...ID, kind: z.literal("model"), name: z.string() }),
+  z.object({ ...ID, kind: z.literal("model"), name: z.string(), page: z.enum(MODEL_PAGES).catch("overview"), tensor: z.string().nullable().catch(null) }),
   z.object({ ...ID, kind: z.literal("profile"), title: z.string() }),
 ]);
 

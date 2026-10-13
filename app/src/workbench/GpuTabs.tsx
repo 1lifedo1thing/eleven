@@ -1,6 +1,8 @@
 import { type ReactElement, useState } from "react";
 
 import { ModelView } from "../gpu/ModelView";
+import { pagesOf } from "../gpu/models/facts";
+import type { ModelPage } from "../gpu/types";
 import { ProfileView } from "../gpu/ProfileView";
 import { ShaderView } from "../gpu/ShaderView";
 import { useFunctionIr, useLoadedBy } from "../gpu/useGpu";
@@ -32,15 +34,19 @@ export function ShaderTab({ library, name }: { readonly library: string; readonl
   return <ShaderView fn={fn} stage={lib.format} ir={ir} loadedBy={loadedBy} onOpen={onOpen} onAsk={onAsk} />;
 }
 
-export function ModelTab({ name }: { readonly name: string }): ReactElement {
+export function ModelTab({ name, page, tensor }: { readonly name: string; readonly page: ModelPage; readonly tensor: string | null }): ReactElement {
   const bench = useBench();
-  const { gpuData } = bench;
+  const { gpuData, wb } = bench;
   const models = gpuData.kind === "ready" ? gpuData.value.models : [];
   const model = models.find((m) => m.name === name);
   if (!model) return <Note text={gpuData.kind === "loading" ? "Reading the model…" : `${name} isn't in this app anymore.`} />;
-  const onAsk = (): void => ask(bench, `What is the model ${model.name} (${model.format}) in this app for? Read its layers and say what it does and how it's used, in plain terms.`);
-  const risks = models.flatMap((m) => (m.risk ? [m.risk] : []));
-  return <ModelView model={model} risks={risks} onAsk={onAsk} />;
+  const shown = pagesOf(model).includes(page) ? page : "overview";
+  const onAsk = (): void => ask(bench, `What is the model ${model.name} (${model.format}) for? Read its tensors and metadata and say what it does and whether it's safe to load, in plain terms.`);
+  const onTensor = (picked: string): void => {
+    wb.open({ kind: "model", name, page: "tensors", tensor: picked }, false);
+    wb.reveal("inspector");
+  };
+  return <ModelView model={model} page={shown} tensor={tensor} onPage={(next) => wb.open({ kind: "model", name, page: next }, false)} onTensor={onTensor} onAsk={onAsk} />;
 }
 
 export function ProfileTab({ title }: { readonly title: string }): ReactElement {

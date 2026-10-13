@@ -118,3 +118,8 @@ export function Lines({ text, style = {} }: { readonly text: string; readonly st
     </div>
   );
 }
+
+/** A model or weights file: the workbench reads its headers, so there is no code, engine or debugger. */
+export function isModelBench(b: Bench): boolean {
+  return b.chat.target?.kind === "model";
+}

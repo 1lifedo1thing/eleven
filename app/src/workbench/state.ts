@@ -89,7 +89,7 @@ export type FindMode = "text" | "regex" | "hex" | "number";
 
 export type UndoToast = { readonly text: string; readonly undo: (() => void) | null; readonly seq: number };
 
-export type NavSection = "threads" | "work" | "data" | "source" | "functions" | "gpu";
+export type NavSection = "threads" | "work" | "data" | "source" | "functions" | "gpu" | "model" | "blocks";
 
 function modeFor(view: Settings["firstView"]): CodeMode {
   switch (view) {
@@ -175,7 +175,7 @@ function freshTab(target: TabTarget, id: string, preview: boolean, view: CodeMod
     case "shader":
       return { kind: "shader", id, library: target.library, name: target.name, preview };
     case "model":
-      return { kind: "model", id, name: target.name, preview };
+      return { kind: "model", id, name: target.name, page: target.page ?? "overview", tensor: target.tensor ?? null, preview };
     case "profile":
       return { kind: "profile", id, title: target.title, preview };
     case "diff":
@@ -212,6 +212,8 @@ function openIn(s: UiState, target: TabTarget, preview: boolean, view: CodeMode 
   if (same >= 0) {
     const found = tabs[same];
     if (found && !preview) tabs[same] = { ...found, preview: false };
+    const current = tabs[same];
+    if (current?.kind === "model" && target.kind === "model") tabs[same] = { ...current, page: target.page ?? current.page, tensor: target.tensor === undefined ? current.tensor : target.tensor };
     panes[at] = { ...pane, tabs, active: same };
     return { ...s, panes, focus: at, paletteOpen: false };
   }

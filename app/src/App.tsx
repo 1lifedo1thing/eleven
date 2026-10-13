@@ -61,6 +61,11 @@ function autoOpens(when: Settings["openWorkbench"], chatting: boolean): boolean 
   }
 }
 
+/** Models and shaders have nothing to chat about first, so they open straight in the workbench. */
+function hasCode(target: Target): boolean {
+  return target.kind === "binary" || target.kind === "app";
+}
+
 /** The most recent binary or app project, when Settings asks to start there instead of Home. */
 function lastProject(): Target | null {
   if (currentSettings().launch !== "The last project") return null;
@@ -94,8 +99,8 @@ export function App({ initial }: { readonly initial: Target | null }): ReactElem
   const chatting = chat.thread.state.messages.some((message) => message.kind === "user");
   const { openWorkbench } = useSettings().settings;
   useEffect(() => {
-    if (!target || (target.kind !== "binary" && target.kind !== "app")) return;
-    if (!autoOpens(openWorkbench, chatting)) return;
+    if (!target) return;
+    if (hasCode(target) && !autoOpens(openWorkbench, chatting)) return;
     if (screen.kind !== "home" && screen.kind !== "workbench") return;
     const key = `${chat.thread.id}:${target.path}`;
     if (shown.current === key) return;

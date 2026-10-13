@@ -46,6 +46,12 @@ function opening(target: Target | null): readonly string[] {
       'When the user names a binary or app to study, open it with the eleven-rea MCP tool open_binary (provider_id "ghidra") so Eleven can show it.',
     ];
   }
+  if (target.kind === "model") {
+    return [
+      `You are working inside Eleven, a reverse-engineering app. The user opened the model file ${target.original}.`,
+      "It holds weights, not a program, so don't open it with open_binary. Eleven already shows its header, tensors and load risks in the model panel next to this chat. Read the file's bytes yourself only if you need more than that.",
+    ];
+  }
   const slice = target.path === target.original ? "" : ` (analyze ${target.path}, the ${target.arch} slice)`;
   return [
     `You are working inside Eleven, a reverse-engineering app. The user opened ${target.original}${slice}.`,
@@ -206,7 +212,7 @@ export function useThread(agent: AgentEntry, native: NativeCommand | null, targe
 
   const deliver = (text: string): void => {
     const live = ensureSession();
-    if (target && !prompted.current) void openEntry(target);
+    if (target && (target.kind === "binary" || target.kind === "app") && !prompted.current) void openEntry(target);
     const prompt = prompted.current ? text : firstPrompt(target, state.messages, text);
     prompted.current = true;
     dispatch({ type: "sent", text, at: Date.now() });

@@ -3,8 +3,9 @@ import type { ReactElement } from "react";
 import { showing } from "./state";
 import { Tooltip } from "../components/kit";
 import { useTheme } from "../theme";
+import { pageLabel } from "../gpu/models/facts";
 import { CommandKeys, Icon } from "../components/ui";
-import { ELLIPSIS, HOVER, IconButton, MONO_STYLE, useBench } from "./parts";
+import { ELLIPSIS, HOVER, IconButton, isModelBench, MONO_STYLE, useBench } from "./parts";
 import { currentAddr, placeIn, segmentOf } from "./where";
 
 function Pill({ icon, label, on = false, color, onClick, children }: {
@@ -34,6 +35,10 @@ export function Header(): ReactElement {
   const at = currentAddr(bench);
   const segment = segmentOf(program.segments, at);
   const debugging = showing(s, "debug");
+  const model = isModelBench(bench);
+  const pane = s.panes[s.focus];
+  const tab = pane?.tabs[pane.active];
+  const crumbs = model && tab?.kind === "model" ? [pageLabel(tab.page), ...(tab.page === "tensors" && tab.tensor ? [tab.tensor] : [])] : null;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 4, height: 44, flexShrink: 0, paddingLeft: 10, paddingRight: 8 }}>
       {!s.sidebarOpen && <IconButton icon="sidebar" label="Show sidebar" iconSize={16} onClick={() => wb.patch({ sidebarOpen: true })} />}
@@ -41,10 +46,19 @@ export function Header(): ReactElement {
       <IconButton icon="forward" label="Forward" color={s.at < s.trail.length - 1 ? p.text3 : p.faint} onClick={wb.forward} />
       <div role="navigation" aria-label="Where you are" style={{ display: "flex", alignItems: "center", gap: 6, flexGrow: 1, flexShrink: 1, minWidth: 0, paddingLeft: 6, color: p.muted, whiteSpace: "nowrap", overflow: "hidden" }}>
         <div style={{ flexShrink: 0 }}>{program.name}</div>
-        {segment && <div style={{ color: p.faint }}>›</div>}
-        {segment && <div style={{ flexShrink: 0 }}>{segment}</div>}
-        <div style={{ color: p.faint }}>›</div>
-        <div style={{ minWidth: 0, color: p.text, fontSize: 12, ...MONO_STYLE, ...ELLIPSIS }}>{placeIn(nameOf(focusAddr), focusAddr, at)}</div>
+        {crumbs ? crumbs.map((crumb, ix) => (
+          <div key={crumb} style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+            <div style={{ color: p.faint }}>›</div>
+            <div style={{ minWidth: 0, color: ix === crumbs.length - 1 ? p.text : p.muted, ...(ix > 0 ? { fontSize: 12, ...MONO_STYLE } : {}), ...ELLIPSIS }}>{crumb}</div>
+          </div>
+        )) : (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+            {segment && <div style={{ color: p.faint }}>›</div>}
+            {segment && <div style={{ flexShrink: 0 }}>{segment}</div>}
+            <div style={{ color: p.faint }}>›</div>
+            <div style={{ minWidth: 0, color: p.text, fontSize: 12, ...MONO_STYLE, ...ELLIPSIS }}>{placeIn(nameOf(focusAddr), focusAddr, at)}</div>
+          </div>
+        )}
       </div>
       <Tooltip label="Find text, numbers or bytes in this file">
         <div style={{ display: "flex" }}>
@@ -53,11 +67,13 @@ export function Header(): ReactElement {
           </Pill>
         </div>
       </Tooltip>
-      <Tooltip label="Run this program under the debugger. It stops at your breakpoints.">
-        <div style={{ display: "flex" }}>
-          <Pill icon="play" label={debugging ? "Debugging" : "Debug"} on={debugging} {...(debugging ? { color: p.string } : {})} onClick={() => wb.toggleTool("debug")} />
-        </div>
-      </Tooltip>
+      {!model && (
+        <Tooltip label="Run this program under the debugger. It stops at your breakpoints.">
+          <div style={{ display: "flex" }}>
+            <Pill icon="play" label={debugging ? "Debugging" : "Debug"} on={debugging} {...(debugging ? { color: p.string } : {})} onClick={() => wb.toggleTool("debug")} />
+          </div>
+        </Tooltip>
+      )}
       <Pill icon="spark" label={`Ask ${agentName}`} on={showing(s, "agent")} onClick={() => { wb.patch({ pickerOpen: false }); wb.toggleTool("agent"); }} />
     </div>
   );
