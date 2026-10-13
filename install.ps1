@@ -1,6 +1,6 @@
 # Installs Eleven for the current Windows user.
 #
-#   irm https://raw.githubusercontent.com/Zfinix/eleven/main/install.ps1 | iex
+#   irm https://eleven.chizi.app/install.ps1 | iex
 #
 # Set ELEVEN_RELEASE_URL to install a specific zip (local path or URL) instead.
 $ErrorActionPreference = "Stop"

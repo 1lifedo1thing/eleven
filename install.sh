@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Installs Eleven into /Applications.
 #
-#   curl -fsSL https://eleven.dev/install.sh | sh
+#   curl -fsSL https://eleven.chizi.app/install.sh | bash
 #
 # It downloads the latest release zip for this Mac's architecture, unzips it,
 # and opens it. The app is signed and notarized; Java and Ghidra download on first launch. Set
