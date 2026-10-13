@@ -10,7 +10,7 @@ app/build
 # Decompiler output and launch video renders
 app/app-debug
 app/hello
-launch/out
+launch/
 
 # Local env, logs and recordings
 .env
@@ -28,3 +28,4 @@ launch/out
 CLAUDE.local.md
 .agents/
 .claude/
+site/
