@@ -25,5 +25,6 @@ launch/out
 *.swp
 
 # Agent and tool scratch
-.claude/settings.local.json
 CLAUDE.local.md
+.agents/
+.claude/
