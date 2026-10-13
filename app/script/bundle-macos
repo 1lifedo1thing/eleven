@@ -31,13 +31,17 @@ rizin_build="${ELEVEN_RIZIN_BUILD:-$app_dir/build/rizin}"
 [ -x "$rizin_build/bin/rizin" ] || "$app_dir/script/build-rizin" > /dev/null
 cp -R "$rizin_build" "$out/Contents/Resources/rizin"
 
-xcrun actool "$repo/assets/Eleven.icon" \
+# The icon compiled by actool; CI runners whose actool crashes use the copy compiled here.
+if xcrun actool "$repo/assets/Eleven.icon" \
   --compile "$out/Contents/Resources" \
   --app-icon Eleven \
   --platform macosx \
   --minimum-deployment-target 14.0 \
-  --output-partial-info-plist "$out/Contents/Resources/.icon.plist" > /dev/null
-rm "$out/Contents/Resources/.icon.plist"
+  --output-partial-info-plist "$out/Contents/Resources/.icon.plist" > /dev/null 2>&1; then
+  rm -f "$out/Contents/Resources/.icon.plist"
+else
+  cp "$app_dir/script/macos-icon/Assets.car" "$app_dir/script/macos-icon/Eleven.icns" "$out/Contents/Resources/"
+fi
 cp "$repo/assets/ElevenDocument.icns" "$out/Contents/Resources/ElevenDocument.icns"
 
 cat > "$out/Contents/Info.plist" <<PLIST

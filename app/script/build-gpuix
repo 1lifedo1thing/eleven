@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Builds GPUIX from the Zfinix fork (the branch Eleven needs, ahead of npm) and
+# installs it over node_modules/@gpuix, so every OS ships the same GPUIX.
+# --js-only skips the Rust build, for typechecking.
+set -euo pipefail
+
+app_dir="$(cd "$(dirname "$0")/.." && pwd)"
+gpuix="${ELEVEN_GPUIX_SOURCE:-$app_dir/../../gpuix}"
+modules="$app_dir/node_modules/@gpuix"
+
+case "$(uname -s)" in
+  Darwin) platform="darwin-arm64" ;;
+  Linux) platform="linux-x64-gnu" ;;
+  MINGW*|MSYS*|CYGWIN*) platform="win32-x64-msvc" ;;
+  *) echo "unsupported OS: $(uname -s)" >&2; exit 1 ;;
+esac
+
+js_only="${1:-}"
+(cd "$gpuix" && bun install --frozen-lockfile)
+if [ "$js_only" = "--js-only" ]; then
+  (cd "$gpuix/packages/native" && bun run build:js)
+else
+  (cd "$gpuix/packages/native" && bun run build:release)
+fi
+(cd "$gpuix/packages/react" && bun run build)
+
+copy_package() {
+  local from="$1" to="$2"
+  shift 2
+  mkdir -p "$to"
+  for item in "$@"; do
+    [ -e "$from/$item" ] && rm -rf "${to:?}/$item" && cp -R "$from/$item" "$to/$item"
+  done
+}
+
+copy_package "$gpuix/packages/native" "$modules/native" index.js index.cjs index.d.ts browser.mjs dist wasm LICENSE package.json
+copy_package "$gpuix/packages/react" "$modules/react" dist jsx-runtime.js jsx-runtime.d.ts jsx-dev-runtime.js jsx-dev-runtime.d.ts LICENSE package.json
+[ "$js_only" = "--js-only" ] && { echo "installed GPUIX JavaScript from $gpuix"; exit 0; }
+mkdir -p "$modules/native-$platform"
+cp "$gpuix/packages/native/gpuix-native.$platform.node" "$modules/native-$platform/"
+[ -f "$modules/native-$platform/package.json" ] || printf '{ "name": "@gpuix/native-%s", "version": "0.0.0", "main": "gpuix-native.%s.node" }\n' "$platform" "$platform" > "$modules/native-$platform/package.json"
+echo "installed GPUIX from $gpuix for $platform"

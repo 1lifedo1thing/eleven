@@ -11,6 +11,7 @@ permissions:
 env:
   BUN_VERSION: 1.3.8
   REA_REF: feat/set-code-type
+  GPUIX_REF: eleven
   HUSKY: "0"
 
 jobs:
@@ -40,6 +41,26 @@ jobs:
       - name: Install app dependencies
         working-directory: eleven/app
         run: bun install --frozen-lockfile
+      - uses: actions/checkout@v4
+        with:
+          repository: Zfinix/gpuix
+          ref: ${{ env.GPUIX_REF }}
+          path: gpuix
+          submodules: recursive
+      - name: Install Metal toolchain
+        run: xcodebuild -downloadComponent MetalToolchain
+      - name: Cache GPUIX build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            gpuix/packages/native/target
+          key: gpuix-${{ runner.os }}-${{ hashFiles('gpuix/packages/native/Cargo.lock') }}
+          restore-keys: gpuix-${{ runner.os }}-
+      - name: Build GPUIX from the Eleven branch
+        shell: bash
+        run: (cd gpuix && rustup show active-toolchain || rustup toolchain install) && bash eleven/app/script/build-gpuix
       - name: Import signing certificate and notary key
         env:
           MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
@@ -110,6 +131,26 @@ jobs:
       - name: Install app dependencies
         working-directory: eleven/app
         run: bun install --frozen-lockfile
+      - uses: actions/checkout@v4
+        with:
+          repository: Zfinix/gpuix
+          ref: ${{ env.GPUIX_REF }}
+          path: gpuix
+          submodules: recursive
+      - name: Install GPUI build dependencies
+        run: sudo apt-get update && sudo apt-get install -y gcc g++ clang libfontconfig-dev libwayland-dev libxkbcommon-x11-dev libx11-xcb-dev libssl-dev libzstd-dev libvulkan1
+      - name: Cache GPUIX build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            gpuix/packages/native/target
+          key: gpuix-${{ runner.os }}-${{ hashFiles('gpuix/packages/native/Cargo.lock') }}
+          restore-keys: gpuix-${{ runner.os }}-
+      - name: Build GPUIX from the Eleven branch
+        shell: bash
+        run: (cd gpuix && rustup show active-toolchain || rustup toolchain install) && bash eleven/app/script/build-gpuix
       - name: Fetch appimagetool
         run: |
           curl -fsSL https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -o "$RUNNER_TEMP/appimagetool"
@@ -152,6 +193,24 @@ jobs:
       - name: Install app dependencies
         working-directory: eleven/app
         run: bun install --frozen-lockfile
+      - uses: actions/checkout@v4
+        with:
+          repository: Zfinix/gpuix
+          ref: ${{ env.GPUIX_REF }}
+          path: gpuix
+          submodules: recursive
+      - name: Cache GPUIX build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            gpuix/packages/native/target
+          key: gpuix-${{ runner.os }}-${{ hashFiles('gpuix/packages/native/Cargo.lock') }}
+          restore-keys: gpuix-${{ runner.os }}-
+      - name: Build GPUIX from the Eleven branch
+        shell: bash
+        run: (cd gpuix && rustup show active-toolchain || rustup toolchain install) && bash eleven/app/script/build-gpuix
       - name: Package
         working-directory: eleven/app
         env:
