@@ -9,6 +9,7 @@ import { agentDetail, type AgentStatus } from "./agentSetup";
 import { glass, HOVER, lineHeight } from "./look";
 import { Note, OutlineButton, Panel, Percent, PrimaryButton, Progress, StepHeading } from "./SetupParts";
 import type { AgentSetup } from "./useAgentSetup";
+import { THIS_DEVICE } from "../lib/platform";
 
 const FEW = 6;
 
@@ -74,7 +75,7 @@ function hint(agent: AgentEntry, status: AgentStatus): string | null {
     case "installing":
       return `You can keep going while ${agent.name} installs.`;
     case "unavailable":
-      return `${agent.name} can't run on this Mac yet. ${status.detail}. Pick one that's ready.`;
+      return `${agent.name} can't run on ${THIS_DEVICE} yet. ${status.detail}. Pick one that's ready.`;
     case "ready":
       return null;
   }

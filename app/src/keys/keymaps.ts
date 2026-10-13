@@ -1,3 +1,4 @@
+import { OS } from "../lib/platform";
 import { COMMANDS, type CommandId } from "./commands";
 
 /** A key combo written as modifiers in Apple's order then the key, like "shift-cmd-p" or "g". "" means no shortcut. */
@@ -97,7 +98,7 @@ const MODIFIERS = ["ctrl", "alt", "shift", "cmd"] as const;
 
 type Modifier = (typeof MODIFIERS)[number];
 
-const MODIFIER_GLYPH: Readonly<Record<Modifier, string>> = { ctrl: "⌃", alt: "⌥", shift: "⇧", cmd: "⌘" };
+const MODIFIER_GLYPH: Readonly<Record<Modifier, string>> = OS === "mac" ? { ctrl: "⌃", alt: "⌥", shift: "⇧", cmd: "⌘" } : { ctrl: "Super", alt: "Alt", shift: "Shift", cmd: "Ctrl" };
 
 const KEY_GLYPH: Readonly<Record<string, string>> = {
   enter: "↩", backspace: "⌫", delete: "⌦", escape: "Esc", space: "Space", tab: "Tab",
@@ -131,11 +132,12 @@ export function comboKeys(combo: Combo): readonly string[] {
   if (!combo) return [];
   const { mods, key } = parseCombo(combo);
   const cap = KEY_GLYPH[key] ?? (/^f\d+$/.test(key) ? key.toUpperCase() : key.length === 1 ? key.toUpperCase() : key);
-  return [...MODIFIERS.filter((mod) => mods.includes(mod)).map((mod) => MODIFIER_GLYPH[mod]), cap];
+  const order: readonly Modifier[] = OS === "mac" ? MODIFIERS : ["cmd", "ctrl", "alt", "shift"];
+  return [...order.filter((mod) => mods.includes(mod)).map((mod) => MODIFIER_GLYPH[mod]), cap];
 }
 
 export function comboText(combo: Combo): string {
-  return comboKeys(combo).join("");
+  return comboKeys(combo).join(OS === "mac" ? "" : "+");
 }
 
 /** A combo with no ⌘ or ⌃ fires on its own key, so it must not fire while you type in a field. */

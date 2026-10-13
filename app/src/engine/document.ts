@@ -1,8 +1,6 @@
-import { execFile } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, relative } from "node:path";
-import { promisify } from "node:util";
 
 import { deleteThread, listThreads, loadThread, renameThread, saveThread, type SavedThread } from "../chat/history";
 import { isRecord } from "../lib/guards";
@@ -12,13 +10,13 @@ import { appVersion } from "../settings/system";
 import { type Manifest, openElevenFile, pack, type Part, sha256, writeAtomic } from "./elevenFile";
 import { projectJson, restoreProjectJson } from "./project";
 import type { Target } from "./target";
+import { cacheRoot as platformCache, chooseSavePath } from "../lib/platform";
 
 function cacheRoot(): string {
-  return pathSetting("cacheDir", "ELEVEN_CACHE") ?? join(homedir(), "Library", "Caches", "eleven");
+  return pathSetting("cacheDir", "ELEVEN_CACHE") ?? platformCache();
 }
 const DOCUMENTS = supportPath("documents.json");
 const EXTENSION = ".eleven";
-const run = promisify(execFile);
 
 /** Binaries rarely change and level 19 is slow, so each one is compressed once per run. */
 const packedBinaries = new Map<string, { readonly raw: Uint8Array; readonly packed: Uint8Array }>();
@@ -183,16 +181,10 @@ export function openDocument(path: string): { readonly manifest: Manifest; reado
   }
 }
 
-/** Asks where to save, with the macOS save panel; null when you cancel. */
+/** Asks where to save, with the system's save dialog; null when you cancel. */
 export async function askSavePath(name: string): Promise<string | null> {
-  const base = name.replace(/\.(app|eleven)$/i, "").replace(/"/g, "");
-  const script = `POSIX path of (choose file name with prompt "Save the project" default name "${base}${EXTENSION}" default location (path to documents folder))`;
-  try {
-    const { stdout } = await run("osascript", ["-e", script]);
-    const chosen = stdout.trim();
-    if (!chosen) return null;
-    return isElevenFile(chosen) ? chosen : `${chosen}${EXTENSION}`;
-  } catch {
-    return null;
-  }
+  const base = name.replace(/\.(app|eleven)$/i, "");
+  const chosen = await chooseSavePath("Save the project", `${base}${EXTENSION}`, projectsFolder());
+  if (!chosen) return null;
+  return isElevenFile(chosen) ? chosen : `${chosen}${EXTENSION}`;
 }

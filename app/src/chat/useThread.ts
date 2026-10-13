@@ -1,4 +1,3 @@
-import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { dirname } from "node:path";
 import { useEffect, useReducer, useRef, useState } from "react";
@@ -17,6 +16,7 @@ import { prepareTarget, type Target } from "../engine/target";
 import { type SavedThread, saveThread } from "./history";
 import { EMPTY_THREAD, isBusy, type Message, threadReducer, type ThreadState } from "./thread";
 import { shownText } from "../skills/load";
+import { copyToClipboard, THIS_DEVICE } from "../lib/platform";
 
 export type Thread = {
   readonly id: string;
@@ -66,7 +66,7 @@ function transcript(messages: readonly Message[]): readonly string[] {
 function firstPrompt(target: Target | null, past: readonly Message[], text: string): string {
   return [
     ...opening(target),
-    "Only use Eleven's tools (eleven and eleven-rea). Never use your own built-in reverse-engineering tools or other disassemblers such as Hopper, IDA or a separate Ghidra, even if one is installed. eleven-rea runs Ghidra on this Mac.",
+    `Only use Eleven's tools (eleven and eleven-rea). Never use your own built-in reverse-engineering tools or other disassemblers such as Hopper, IDA or a separate Ghidra, even if one is installed. eleven-rea runs Ghidra on ${THIS_DEVICE}.`,
     "When you study a function, read it with procedure_pseudo_code so it appears in Eleven's code panel.",
     "Answer plainly and briefly, in markdown. Put any code, disassembly, addresses or symbol names in fenced code blocks or inline `code` so they read in the code font.",
     ...transcript(past),
@@ -104,8 +104,7 @@ function projectOf(target: Target | null): string | null {
 }
 
 export function copyText(text: string): void {
-  const child = spawn("pbcopy");
-  child.stdin.end(text);
+  void copyToClipboard(text);
 }
 
 /** One conversation with one agent about one target, plus the code canvas it drives. Only a `live` thread runs an agent. */

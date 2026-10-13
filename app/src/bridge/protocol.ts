@@ -1,5 +1,5 @@
-import { homedir } from "node:os";
 import { join } from "node:path";
+import { cacheRoot, OS } from "../lib/platform";
 
 export const BRIDGE_ENV = "ELEVEN_BRIDGE";
 
@@ -19,7 +19,7 @@ export type BridgeRequest = { readonly id: number; readonly tool: BridgeTool; re
 export type BridgeReply = { readonly id: number; readonly ok: true; readonly text: string } | { readonly id: number; readonly ok: false; readonly error: string };
 
 export function bridgePath(): string {
-  return join(homedir(), "Library", "Caches", "eleven", `bridge-${process.pid}.sock`);
+  return OS === "windows" ? `\\\\.\\pipe\\eleven-bridge-${process.pid}` : join(cacheRoot(), `bridge-${process.pid}.sock`);
 }
 
 const TOOLS: readonly BridgeTool[] = ["open_function", "current_view", "set_view", "rename_function", "add_note", "add_comment", "bookmark", "propose_patch", "set_code_type", "set_number_format", "list_marks", "gpu_profile"];

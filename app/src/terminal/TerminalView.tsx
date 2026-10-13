@@ -5,6 +5,7 @@ import { noteTyping } from "../lib/shortcuts";
 import { useSize } from "../lib/useSize";
 import { MONO, useTheme } from "../theme";
 import { type Run, type Screen, shellIn } from "./shell";
+import { readClipboard } from "../lib/platform";
 
 const FONT_SIZE = 12;
 const LINE_HEIGHT = 18;
@@ -12,10 +13,6 @@ const LINE_HEIGHT = 18;
 const CHAR_WIDTH = FONT_SIZE * 0.6;
 const PAD = 10;
 const CURSOR = "#e5c07b";
-
-function readClipboard(): string {
-  return new TextDecoder().decode(Bun.spawnSync(["pbpaste"]).stdout);
-}
 
 function RunText({ run, focused, ink }: { readonly run: Run; readonly focused: boolean; readonly ink: string }): ReactElement {
   const cursor = run.cursor ? (focused ? { backgroundColor: CURSOR, color: ink } : { backgroundColor: "rgba(229,192,123,0.35)" }) : {};

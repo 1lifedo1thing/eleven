@@ -9,6 +9,7 @@ import { useTheme } from "../theme";
 import { Icon, Keys } from "../components/ui";
 import { glass, HOVER, lineHeight } from "./look";
 import { StepHeading } from "./SetupParts";
+import { THIS_DEVICE } from "../lib/platform";
 
 const PREVIEW: readonly CommandId[] = ["goto", "rename", "palette", "comment", "back", "xrefs", "forward", "graph", "bookmark", "pseudo"];
 
@@ -16,7 +17,7 @@ function noteFor(id: KeymapId, tools: KeyTools): string {
   if (id === "eleven") return "Default";
   const custom = customFor(tools, id);
   if (custom) return `${Object.keys(custom.overrides).length} changes found`;
-  return tools.installed.has(id) ? "On this Mac" : "";
+  return tools.installed.has(id) ? `On ${THIS_DEVICE}` : "";
 }
 
 function Tile({ id, tools, on, onPick }: { readonly id: KeymapId; readonly tools: KeyTools; readonly on: boolean; readonly onPick: () => void }): ReactElement {

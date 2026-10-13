@@ -1,5 +1,5 @@
-import { homedir } from "node:os";
 import { join } from "node:path";
+import { dataRoot } from "./platform";
 
 /**
  * Eleven's data directory: renames, bookmarks, notes, saved threads and settings.
@@ -7,7 +7,7 @@ import { join } from "node:path";
  * touch the user's real data.
  */
 export function supportDir(): string {
-  return process.env.ELEVEN_SUPPORT ?? join(homedir(), "Library", "Application Support", "Eleven");
+  return process.env.ELEVEN_SUPPORT ?? dataRoot();
 }
 
 export function supportPath(...parts: readonly string[]): string {

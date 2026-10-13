@@ -12,6 +12,7 @@ import { subjectMenu } from "./actions";
 import { currentMatch, FindBar, findInBytes } from "./Find";
 import { MONO_STYLE, useBench } from "./parts";
 import type { Subject } from "./subject";
+import { MOD } from "../lib/platform";
 
 function hexAt(base: bigint, index: number): string {
   return `0x${(base + BigInt(index)).toString(16)}`;
@@ -175,7 +176,7 @@ function Table({ list }: { readonly list: ListKind }): ReactElement {
           </div>
         ))}
       </virtual-list>}
-      {rows.length < every.length && <div style={{ flexShrink: 0, paddingTop: 8, paddingBottom: 10, paddingLeft: 8, fontSize: 12, color: p.faint }}>{`Showing the first ${rows.length.toLocaleString()} of ${every.length.toLocaleString()}. Press ⌘K to search them all.`}</div>}
+      {rows.length < every.length && <div style={{ flexShrink: 0, paddingTop: 8, paddingBottom: 10, paddingLeft: 8, fontSize: 12, color: p.faint }}>{`Showing the first ${rows.length.toLocaleString()} of ${every.length.toLocaleString()}. Press ${MOD}K to search them all.`}</div>}
     </div>
   );
 }
@@ -192,7 +193,7 @@ export function TableView({ list }: { readonly list: ListKind }): ReactElement {
 export function EmptyPane(): ReactElement {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", minHeight: 300, padding: 24 }}>
-      <EmptyState title="No tabs open" hint="Pick a function in the sidebar, or press ⌘K to search." />
+      <EmptyState title="No tabs open" hint={`Pick a function in the sidebar, or press ${MOD}K to search.`} />
     </div>
   );
 }

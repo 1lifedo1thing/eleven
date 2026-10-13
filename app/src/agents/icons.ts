@@ -1,13 +1,13 @@
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import { join } from "node:path";
 
 import { ASSETS } from "../lib/assets";
 import { readCachedText } from "./launch";
 import type { AgentEntry } from "./registry";
+import { cacheRoot } from "../lib/platform";
 
-const ICON_DIR = join(homedir(), "Library", "Caches", "eleven", "agents", "icons");
+const ICON_DIR = join(cacheRoot(), "agents", "icons");
 
 async function download(url: string, file: string): Promise<string | null> {
   try {

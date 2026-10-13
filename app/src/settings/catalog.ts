@@ -19,6 +19,8 @@ import type { Action, Confirm, Control, GroupModel, Lead, Option, SettingRowMode
 import type { Page } from "./pages";
 import { DEFAULT_SETTINGS, type PathKey, PERMISSION_TOOLS, type PermissionLevel, type PermissionTool, saveSettings, type Settings, SETTINGS_FILE } from "./store";
 import { openLink, pickPath, showInFinder, tildePath } from "./system";
+import { dataRoot, FILE_MANAGER, THIS_DEVICE } from "../lib/platform";
+import { MOD } from "../lib/platform";
 
 export type Ctx = {
   readonly settings: Settings;
@@ -111,7 +113,7 @@ function makeHelpers(c: Ctx): {
       const chosen = c.settings[key] !== "";
       return {
         title, desc: tildePath(shown), mono: true, keywords: "folder location path choose", control: { kind: "none" },
-        buttons: [btn("Choose…", () => void choose()), btn("Show in Finder", () => showInFinder(shown)), ...(chosen ? [btn("Reset", () => save(""))] : [])],
+        buttons: [btn("Choose…", () => void choose()), btn(`Show in ${FILE_MANAGER}`, () => showInFinder(shown)), ...(chosen ? [btn("Reset", () => save(""))] : [])],
         ...extra,
       };
     },
@@ -139,7 +141,7 @@ const PERMISSION_TEXT: Readonly<Record<PermissionTool, readonly [string, string,
   patch: ["Patch bytes", "Writes a patched copy. The original file is never touched.", "Changing your project"],
   gpu: ["Run the app to record a GPU trace", "Starts the program under Instruments for a few seconds.", "Running things"],
   debug: ["Run the app in the debugger", "Starts the program and stops at breakpoints.", "Running things"],
-  shell: ["Run commands on your Mac", "The agent’s own terminal tools, outside Eleven.", "Running things"],
+  shell: [`Run commands on your computer`, "The agent’s own terminal tools, outside Eleven.", "Running things"],
 };
 
 function permissionRows(c: Ctx, group: string): readonly SettingRowModel[] {
@@ -176,7 +178,7 @@ function agentRows(c: Ctx): { readonly here: readonly SettingRowModel[]; readonl
     });
   });
   const others = c.agents.list.filter((agent) => !c.installed.has(agent.id));
-  const more = (c.browsing ? others : others.slice(0, 2)).map((agent) => info(agent.name, "Not on this Mac. Eleven downloads it and keeps it up to date.", {
+  const more = (c.browsing ? others : others.slice(0, 2)).map((agent) => info(agent.name, `Not on ${THIS_DEVICE}. Eleven downloads it and keeps it up to date.`, {
     lead: lead(agent.id), buttons: [btn("Make default", () => c.update({ defaultAgent: agent.id })), btn("Install", () => c.install(agent.id))],
   }));
   return { here, more };
@@ -253,7 +255,7 @@ export function buildPages(c: Ctx): Readonly<Record<Page, readonly GroupModel[]>
   const { here, more } = agentRows(c);
   const sizes = c.info.sizes;
   const app = c.info.app;
-  const skillsFolder = s.skillsDir || join(homedir(), "Library", "Application Support", "Eleven", "skills");
+  const skillsFolder = s.skillsDir || join(dataRoot(), "skills");
   const builtIn = loadSkills();
   const flipSkill = (name: string): void => {
     const off = s.disabledSkills.includes(name);
@@ -312,14 +314,14 @@ export function buildPages(c: Ctx): Readonly<Record<Page, readonly GroupModel[]>
         sel("chatHistory", "How much of the chat the agent sees", "More context gives better answers on long chats but is slower.", ["Short", "Normal", "Long"], { Short: "Last 10 messages", Normal: "Last 20 messages", Long: "Last 50 messages" }),
         sel("openWorkbench", "Open the workbench", "The full workbench next to the chat.", ["When the agent opens code", "Always", "Only when I ask"]),
       ] },
-      { label: "Composer", rows: [seg("sendKey", "Send with", "The other one adds a new line.", ["Return", "Command Return"], { "Command Return": "⌘ Return" })] },
+      { label: "Composer", rows: [seg("sendKey", "Send with", "The other one adds a new line.", ["Return", "Command Return"], { "Command Return": `${MOD.replace("+", "")} Return` })] },
       { label: "Notifications", rows: [
         tg("notifyWhenDone", "Notify me when the agent finishes", "Only when Eleven isn’t the window in front."),
         tg("soundWhenAsked", "Play a sound when the agent needs you", "For questions and permission requests."),
       ] },
     ],
     agents: [
-      { label: "On this Mac", foot: "Every agent gets the same tools: Eleven’s analysis engine and control of this window.", rows: [
+      { label: `On ${THIS_DEVICE}`, foot: "Every agent gets the same tools: Eleven’s analysis engine and control of this window.", rows: [
         ...here,
         info("Look for agents again", "After installing one from the terminal.", { buttons: [btn("Rescan", c.rescan)] }),
       ] },
@@ -353,7 +355,7 @@ export function buildPages(c: Ctx): Readonly<Record<Page, readonly GroupModel[]>
       ] },
     ],
     privacy: [
-      { label: "What leaves your Mac", foot: "Eleven has no servers of its own. Projects, chats and caches never leave this Mac unless you export them.", rows: [
+      { label: "What leaves your computer", foot: `Eleven has no servers of its own. Projects, chats and caches never leave ${THIS_DEVICE} unless you export them.`, rows: [
         info("The agent you use", "Code and questions you send go to that agent’s provider, under its own privacy terms. Local agents keep everything here.", { status: { text: agentName, tone: "quiet" } }),
         tg("hidePaths", "Hide your name in paths", "Agents see ~/Downloads instead of /Users/yourname/Downloads."),
         tg("askBeforeWholeFile", "Ask before sending a whole file", "Agents normally send only the functions they read. Ask before they upload the entire app."),
@@ -376,7 +378,7 @@ export function buildPages(c: Ctx): Readonly<Record<Page, readonly GroupModel[]>
       { label: "Open files with", foot: "The engine you pick opens files. Eleven still uses the others when you ask for something only they can do.", rows: engineRows(c, h) },
       { label: "Together", rows: [tg("ghidraPseudocode", "Use Ghidra for readable code", "Open files fast with Rizin, then show Ghidra’s clearer pseudocode when it’s ready.", { dim: activeEngine()?.id === "ghidra" })] },
       { label: "Ghidra", rows: [
-        sel("ghidraMemory", "Memory", "Big apps open faster with more. Automatic picks 2 to 4 GB from what this Mac has.", ["Automatic", "4 GB", "8 GB", "16 GB"]),
+        sel("ghidraMemory", "Memory", `Big apps open faster with more. Automatic picks 2 to 4 GB from what ${THIS_DEVICE} has.`, ["Automatic", "4 GB", "8 GB", "16 GB"]),
         tg("findParameters", "Work out function parameters", "Better pseudocode for big apps. Makes the first open slower."),
         tg("rebuildSwitches", "Rebuild switch statements", "Turns jump tables back into switch blocks."),
         tg("hiddenCode", "Look for code no one calls", "Finds more functions in stripped apps. The slowest option."),
@@ -425,17 +427,17 @@ export function buildPages(c: Ctx): Readonly<Record<Page, readonly GroupModel[]>
       ] },
       { label: "Keeping recordings", rows: [
         sel("keepRecordings", "Recordings to keep", "Older ones are deleted. Each can be a few hundred MB.", ["1", "3", "10", "All"]),
-        danger("GPU recordings", `${sizes.recordings} in ${tildePath(RECORDINGS_DIR)}`, "Delete all…", recordings, [btn("Show in Finder", () => showInFinder(RECORDINGS_DIR))]),
+        danger("GPU recordings", `${sizes.recordings} in ${tildePath(RECORDINGS_DIR)}`, "Delete all…", recordings, [btn(`Show in ${FILE_MANAGER}`, () => showInFinder(RECORDINGS_DIR))]),
       ].map((row, ix) => (ix === 1 ? { ...row, mono: true } : row)) },
     ],
     storage: [
       { label: "Exports and patches", rows: [
         path("exportDir", "Save to", exportDir, true),
-        tg("revealExports", "Show in Finder after saving", "For exported code, Objective-C lists and patched copies."),
+        tg("revealExports", `Show in ${FILE_MANAGER} after saving`, "For exported code, Objective-C lists and patched copies."),
       ] },
       { label: "Your work", rows: [
-        info("Projects", `${sizes.projects}. Renames, notes, bookmarks and patches for ${sizes.apps} ${sizes.apps === 1 ? "app" : "apps"}.`, { buttons: [btn("Show in Finder", () => showInFinder(PROJECTS_DIR))] }),
-        danger("Chats", `${sizes.chats}. Every conversation, in its project.`, "Delete all…", confirmed("clear-chats", "Delete every chat in every project? Renames, notes and patches stay. This can’t be undone.", "Delete chats", deleteAllChats, "Deleted all chats"), [btn("Show in Finder", () => showInFinder(THREADS_DIR))]),
+        info("Projects", `${sizes.projects}. Renames, notes, bookmarks and patches for ${sizes.apps} ${sizes.apps === 1 ? "app" : "apps"}.`, { buttons: [btn(`Show in ${FILE_MANAGER}`, () => showInFinder(PROJECTS_DIR))] }),
+        danger("Chats", `${sizes.chats}. Every conversation, in its project.`, "Delete all…", confirmed("clear-chats", "Delete every chat in every project? Renames, notes and patches stay. This can’t be undone.", "Delete chats", deleteAllChats, "Deleted all chats"), [btn(`Show in ${FILE_MANAGER}`, () => showInFinder(THREADS_DIR))]),
         tg("autosave", "Save changes as you go", "Renames and notes save a moment after you make them."),
       ] },
       { label: "Space Eleven can free up", rows: [
@@ -454,7 +456,7 @@ export function buildPages(c: Ctx): Readonly<Record<Page, readonly GroupModel[]>
       { label: "Help", rows: [
         info("Run setup again", "Install engines and agents, and pick shortcuts.", { buttons: [btn("Start", c.setup)] }),
         info("Report a problem", "Copies Eleven’s version, engines and recent errors so you can paste them in a bug report. No file contents.", { buttons: [btn("Copy details", c.copyDetails)] }),
-        info("Settings file", tildePath(SETTINGS_FILE), { mono: true, buttons: [btn("Show in Finder", () => showInFinder(SETTINGS_FILE))] }),
+        info("Settings file", tildePath(SETTINGS_FILE), { mono: true, buttons: [btn(`Show in ${FILE_MANAGER}`, () => showInFinder(SETTINGS_FILE))] }),
       ] },
       { label: "Made with", rows: [
         info("Rizin", "Fast reverse engineering framework.", { lead: { kind: "img", src: ENGINE_LOGO.rizin }, buttons: [btn("Website", () => { openLink("https://rizin.re"); c.toast("Opened in your browser"); })] }),

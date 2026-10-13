@@ -1,10 +1,10 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
 import { isRecord } from "../lib/guards";
+import { dataRoot } from "../lib/platform";
 
-const FILE = join(homedir(), "Library", "Application Support", "Eleven", "welcome.json");
+const FILE = join(dataRoot(), "welcome.json");
 const MAX_RECENT = 12;
 
 export type RecentOpen = { readonly path: string; readonly arch: string; readonly universal: boolean; readonly at: number };

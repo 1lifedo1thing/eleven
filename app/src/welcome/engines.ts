@@ -10,13 +10,15 @@ import { pathSetting } from "../settings/store";
 import { errorMessage, isRecord } from "../lib/guards";
 import { engineArrived } from "../analysis/engines";
 import { adoptToolchain, enginesDir } from "../engine/toolchain";
+import { OS, unzip } from "../lib/platform";
 import { ghidraHome, javaCheck, jdkHome } from "./checks";
 
 const run = promisify(execFile);
 const BREW_PATHS = ["/opt/homebrew/bin/brew", "/usr/local/bin/brew"] as const;
 const RIZIN_PATHS = ["/opt/homebrew/bin/rizin", "/usr/local/bin/rizin"] as const;
 const GHIDRA_RELEASE = "https://api.github.com/repos/NationalSecurityAgency/ghidra/releases/latest";
-const TEMURIN = `https://api.adoptium.net/v3/binary/latest/21/ga/mac/${process.arch === "arm64" ? "aarch64" : "x64"}/jdk/hotspot/normal/eclipse`;
+const ADOPTIUM_OS: Readonly<Record<typeof OS, string>> = { mac: "mac", linux: "linux", windows: "windows" };
+const TEMURIN = `https://api.adoptium.net/v3/binary/latest/21/ga/${ADOPTIUM_OS[OS]}/${process.arch === "arm64" ? "aarch64" : "x64"}/jdk/hotspot/normal/eclipse`;
 
 export type EngineId = "rizin" | "ghidra" | "java";
 
@@ -174,12 +176,13 @@ async function downloadTo(id: EngineId, url: string, file: string): Promise<void
 async function installJava(): Promise<void> {
   const dir = enginesDir();
   mkdirSync(dir, { recursive: true });
-  const file = join(dir, "java-download.tar.gz");
+  const file = join(dir, OS === "windows" ? "java-download.zip" : "java-download.tar.gz");
   setInstall("java", { phase: "running", progress: null, note: "Starting" });
   try {
     await downloadTo("java", TEMURIN, file);
     setInstall("java", { phase: "running", progress: null, note: "Unpacking" });
-    await run("tar", ["-xzf", file, "-C", dir], { timeout: 300000, maxBuffer: 1 << 24 });
+    if (OS === "windows") await unzip(file, dir);
+    else await run("tar", ["-xzf", file, "-C", dir], { timeout: 300000, maxBuffer: 1 << 24 });
   } finally {
     rmSync(file, { force: true });
   }
@@ -196,7 +199,7 @@ async function installGhidra(): Promise<void> {
   try {
     await downloadTo("ghidra", url, file);
     setInstall("ghidra", { phase: "running", progress: null, note: "Unpacking" });
-    await run("unzip", ["-q", "-o", file, "-d", dir], { timeout: 300000, maxBuffer: 1 << 24 });
+    await unzip(file, dir);
   } finally {
     rmSync(file, { force: true });
   }
@@ -205,6 +208,7 @@ async function installGhidra(): Promise<void> {
 async function installEngine(id: EngineId): Promise<void> {
   switch (id) {
     case "rizin":
+      if (OS !== "mac") throw new Error("Rizin comes with Eleven. Reinstall Eleven to get it back.");
       return brewInstall("rizin", "rizin", "Starting");
     case "ghidra":
       return installGhidra();

@@ -1,8 +1,6 @@
-import { execFile } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { extname, join } from "node:path";
-import { promisify } from "node:util";
 import { currentSettings, pathSetting } from "../settings/store";
 
 import { isRecord } from "../lib/guards";
@@ -10,8 +8,8 @@ import { YOU } from "../engine/edits";
 import { loadProject, updateProject, type Patch } from "../engine/project";
 import { rea } from "../engine/rea";
 import type { Program } from "./model";
+import { reveal } from "../lib/platform";
 
-const run = promisify(execFile);
 
 export type ByteEdit = Patch;
 
@@ -79,7 +77,7 @@ async function writeCopy(program: Program, all: readonly Patch[]): Promise<strin
   await mkdir(dir, { recursive: true });
   const path = join(dir, patchedName(program.name));
   await writeFile(path, buffer);
-  if (currentSettings().revealExports && !pathSetting("exportDir", "ELEVEN_EXPORT_DIR")) await run("open", ["-R", path]).catch(() => undefined);
+  if (currentSettings().revealExports && !pathSetting("exportDir", "ELEVEN_EXPORT_DIR")) reveal(path);
   return path;
 }
 

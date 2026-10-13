@@ -1,10 +1,11 @@
 import { execFile } from "node:child_process";
-import { accessSync, constants, readFileSync } from "node:fs";
+import { accessSync, constants, existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, delimiter, join } from "node:path";
 import { promisify } from "node:util";
 
 import { isRecord, stringField } from "../lib/guards";
+import { OS } from "../lib/platform";
 import { AGENT_CLI } from "./clis";
 import type { AgentEntry } from "./registry";
 
@@ -25,6 +26,7 @@ function parseShellVars(output: string): ReadonlyMap<string, string> {
 
 /** Apps opened from Finder get a bare environment; take PATH and Eleven's settings from the login shell. */
 export async function adoptLoginShell(): Promise<void> {
+  if (OS === "windows") return;
   const script = SHELL_VARS.map((name) => `printf "__${name}__%s__END__" "$${name}"`).join(";");
   try {
     const { stdout } = await run(process.env.SHELL ?? "/bin/zsh", ["-ilc", script], { timeout: 5000 });
@@ -49,7 +51,8 @@ function isExecutable(path: string): boolean {
 /** Looks a command up on PATH directly, so shell functions and aliases never match. */
 export function findOnPath(name: string): string | null {
   const dirs = (process.env.PATH ?? "").split(delimiter).filter(Boolean);
-  return dirs.map((dir) => join(dir, name)).find(isExecutable) ?? null;
+  const names = OS === "windows" && !/\.[a-z]+$/i.test(name) ? (process.env.PATHEXT ?? ".EXE;.CMD;.BAT").split(";").filter(Boolean).map((ext) => `${name}${ext.toLowerCase()}`) : [name];
+  return dirs.flatMap((dir) => names.map((file) => join(dir, file))).find(OS === "windows" ? existsSync : isExecutable) ?? null;
 }
 
 function binNames(packageJson: unknown, pkg: string): readonly string[] {

@@ -16,6 +16,7 @@ import { type Combo, comboFor, comboKeys } from "../keys/keymaps";
 import { useSettings } from "../settings/store";
 import { Icon } from "../components/ui";
 import { showAddress } from "../settings/look";
+import { MOD, primaryHeld } from "../lib/platform";
 
 const MAX_RECENT = 3;
 const MAX_FUNCTIONS = 6;
@@ -224,7 +225,7 @@ export function Palette(): ReactElement {
     if (e.key === "escape") close();
     if (e.key === "down") setActive((current + 1) % Math.max(1, all.length));
     if (e.key === "up") setActive((current - 1 + all.length) % Math.max(1, all.length));
-    if (e.key === "enter" && e.modifiers?.cmd) {
+    if (e.key === "enter" && primaryHeld(e.modifiers)) {
       inTab.current = true;
       submit(true);
     }
@@ -269,7 +270,7 @@ export function Palette(): ReactElement {
         <div style={{ display: "flex", alignItems: "center", gap: 16, height: 36, flexShrink: 0, paddingLeft: 14, paddingRight: 14, borderTopWidth: 1, borderColor: p.line2, fontSize: 12 }}>
           <Hint caps={["↑", "↓"]} label="move" />
           <Hint caps={["↩"]} label="open" />
-          <Hint caps={["⌘", "↩"]} label="new tab" />
+          <Hint caps={[MOD.replace("+", ""), "↩"]} label="new tab" />
           <div style={{ flexGrow: 1 }} />
           <div style={{ color: p.faint, whiteSpace: "nowrap" }}>{`${program.name} · ${program.arch}`}</div>
         </div>

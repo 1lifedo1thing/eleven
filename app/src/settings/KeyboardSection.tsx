@@ -13,6 +13,7 @@ import { GroupLabel, PageHeader, Select, washes } from "./controls";
 import type { Option } from "./model";
 import { pageIntro, pageTitle } from "./pages";
 import type { SettingsHandle } from "./store";
+import { THIS_DEVICE } from "../lib/platform";
 
 type Clash = { readonly id: CommandId; readonly combo: Combo; readonly other: CommandId };
 
@@ -50,7 +51,7 @@ function ImportMenu({ tools, onImport }: { readonly tools: KeyTools; readonly on
       {menu.open && (
         <Popover side="bottom" align="end" gap={6} onDismiss={menu.dismiss}>
           <MenuSurface width={280}>
-            {tools.custom.length > 0 && <div style={{ paddingTop: 4, paddingBottom: 6, paddingLeft: 8, fontSize: 11.5, color: p.muted }}>Found on this Mac</div>}
+            {tools.custom.length > 0 && <div style={{ paddingTop: 4, paddingBottom: 6, paddingLeft: 8, fontSize: 11.5, color: p.muted }}>{`Found on ${THIS_DEVICE}`}</div>}
             {tools.custom.map((item) => (
               <div key={item.file} onClick={() => pick(item)} role="button" style={row}>
                 <KeymapIcon id={item.from === "Cursor" || item.from === "VS Code" ? "vscode" : item.from === "Zed" ? "zed" : item.from === "Xcode" ? "xcode" : "ghidra"} tools={tools} size={22} />

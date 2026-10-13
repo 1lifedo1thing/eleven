@@ -1,3 +1,5 @@
+import { THIS_DEVICE } from "../lib/platform";
+
 export const PAGES = ["general", "appearance", "keyboard", "chat", "agents", "permissions", "privacy", "skills", "engines", "code", "debugging", "gpu", "storage", "about"] as const;
 
 export type Page = (typeof PAGES)[number];
@@ -31,9 +33,9 @@ const INTROS: Readonly<Record<Page, string>> = {
   appearance: "Theme, sizes and how code looks everywhere in Eleven.",
   keyboard: "Click a shortcut to change it. Shortcuts follow the tool your hands already know.",
   chat: "How conversations look and when Eleven gets your attention.",
-  agents: "The agents on this Mac, which one starts new projects, and how they run.",
+  agents: `The agents on ${THIS_DEVICE}, which one starts new projects, and how they run.`,
   permissions: "What agents can do on their own and what they ask you about first.",
-  privacy: "What stays on this Mac and what goes to the agent you use.",
+  privacy: `What stays on ${THIS_DEVICE} and what goes to the agent you use.`,
   skills: "Playbooks you can start from the composer or the palette. Any agent can follow them.",
   engines: "The tools Eleven reads apps with. One is enough. With more, Eleven picks the right one for each job.",
   code: "Pseudocode, assembly, graphs, hex and lists.",

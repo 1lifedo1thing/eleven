@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { type CommandId, TEXT_COMMANDS } from "../keys/commands";
 import { type Combo, commandFor, isBareCombo, makeCombo } from "../keys/keymaps";
 import { currentSettings } from "../settings/store";
+import { OS } from "./platform";
 
 type Handler = () => void;
 
@@ -13,12 +14,14 @@ const MODIFIER_KEYS = new Set(["shift", "control", "ctrl", "alt", "option", "cmd
 
 let recorder: ((combo: Combo | null) => void) | null = null;
 
-/** The combo a key event makes, like "shift-cmd-p" or "g", or null for a modifier pressed alone. */
+/** The combo a key event makes, like "shift-cmd-p" or "g", or null for a modifier pressed alone. Off the Mac, Ctrl plays ⌘'s part. */
 export function comboOf(event: EventPayload): Combo | null {
   const key = event.key?.toLowerCase();
   if (!key || MODIFIER_KEYS.has(key)) return null;
   const mods = event.modifiers;
-  const held = [mods?.ctrl ? "ctrl" : null, mods?.alt ? "alt" : null, mods?.shift ? "shift" : null, mods?.cmd ? "cmd" : null] as const;
+  const ctrl = OS === "mac" ? mods?.ctrl : mods?.cmd;
+  const cmd = OS === "mac" ? mods?.cmd : mods?.ctrl;
+  const held = [ctrl ? "ctrl" : null, mods?.alt ? "alt" : null, mods?.shift ? "shift" : null, cmd ? "cmd" : null] as const;
   return makeCombo(held.filter((mod) => mod !== null), key);
 }
 

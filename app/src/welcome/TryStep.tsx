@@ -9,9 +9,10 @@ import { OutlineButton, Percent, PrimaryButton, Progress, StepHeading } from "./
 import { ready, stripFor, type Strip } from "./strip";
 import type { AgentSetup } from "./useAgentSetup";
 import type { Engines } from "./useEngines";
+import { SAMPLE_APP } from "../lib/platform";
 
-const CALCULATOR = "/System/Applications/Calculator.app";
-const IDEAS = ["What happens when I press the equals key? Walk me through the code.", "How does it keep the history of past results?", "Where does it switch between Basic and Scientific?"] as const;
+const CALCULATOR = SAMPLE_APP.path;
+const IDEAS = SAMPLE_APP.ideas;
 
 function StripView({ strip, onAct }: { readonly strip: Strip; readonly onAct: () => void }): ReactElement {
   const { p } = useTheme();
@@ -40,7 +41,7 @@ function Idea({ text, on, onUse }: { readonly text: string; readonly on: boolean
     <div onClick={onUse} role="button" aria-label={text} style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0, paddingTop: 12, paddingBottom: 12, paddingLeft: 14, paddingRight: 14, borderWidth: 1, borderColor: on ? "transparent" : p.fill, borderRadius: 14, backgroundColor: on ? p.fill : "transparent", cursor: "pointer", hover: HOVER }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: p.muted, pointerEvents: "none" }}>
         <Icon name="app" size={12} color={p.muted} />
-        <div>Calculator</div>
+        <div>{SAMPLE_APP.name}</div>
       </div>
       <div style={{ pointerEvents: "none" }}>{text}</div>
     </div>
@@ -52,11 +53,11 @@ export function tryTitle(isReady: boolean, waiting: boolean): string {
   return waiting ? "Waiting on the install" : "Almost there";
 }
 
-/** The real home composer with Calculator attached; a send waits for any install still running. */
+/** The real home composer with a sample app attached; a send waits for any install still running. */
 export function TryStep({ chat, engines, setup, onSent }: { readonly chat: Chat; readonly engines: Engines; readonly setup: AgentSetup; readonly onSent: () => void }): ReactElement {
   const { thread, agents } = chat;
   const [waiting, setWaiting] = useState<string | null>(null);
-  const [seed, setSeed] = useState<{ readonly text: string }>({ text: IDEAS[0] });
+  const [seed, setSeed] = useState<{ readonly text: string }>({ text: IDEAS[0] ?? "" });
   const attached = useRef(false);
   useEffect(() => {
     if (attached.current || chat.target) return;
@@ -103,7 +104,7 @@ export function TryStep({ chat, engines, setup, onSent }: { readonly chat: Chat;
   };
   return (
     <>
-      <StepHeading title={tryTitle(go, waiting !== null)} detail="Ask your first question. Calculator is attached to get you started, or drop your own app on the box." />
+      <StepHeading title={tryTitle(go, waiting !== null)} detail={`Ask your first question. ${SAMPLE_APP.name} is attached to get you started, or drop your own app on the box.`} />
       <Composer place="landing" target={chat.target} agents={agents} thread={{ ...thread, send }} onAttach={chat.openFile} onDetach={chat.detach} onPickAgent={chat.pickAgent} slot={strip && <StripView strip={strip} onAct={act} />} seed={seed} queued={waiting !== null} blocked={strip?.blocks === true} />
       <div style={{ display: "grid", gridTemplateColumns: 3, gap: 10 }}>
         {IDEAS.map((text) => <Idea key={text} text={text} on={seed.text === text} onUse={() => setSeed({ text })} />)}

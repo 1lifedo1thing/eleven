@@ -1,5 +1,6 @@
 import type { AgentStatus } from "./agentSetup";
 import { type EngineId, engineNamed, engineReady, type Found, type Install, rowState } from "./engines";
+import { THIS_DEVICE } from "../lib/platform";
 
 export type StripAction = "installEngines" | "installAgent" | "signIn" | "unqueue";
 
@@ -52,7 +53,7 @@ export function stripFor(r: Readiness): Strip | null {
     return { tone: "missing", text: `To read Calculator, Eleven needs ${names(missing)} (${size} MB).`, blocks: true, progress: undefined, action: { label: "Install", does: "installEngines", primary: true }, engines: missing };
   }
   if (r.agent === "install" || r.agent === "failed") return { tone: "missing", text: `${r.agentName} isn't installed yet. Install it, or pick another agent below.`, blocks: true, progress: undefined, action: { label: "Install", does: "installAgent", primary: true }, engines: [] };
-  if (r.agent === "unavailable") return { tone: "missing", text: `${r.agentName} can't run on this Mac yet. Pick another agent below.`, blocks: true, progress: undefined, action: null, engines: [] };
+  if (r.agent === "unavailable") return { tone: "missing", text: `${r.agentName} can't run on ${THIS_DEVICE} yet. Pick another agent below.`, blocks: true, progress: undefined, action: null, engines: [] };
   if (r.agent === "signin") return { tone: "signin", text: `Sign in to ${r.agentName} to send. It opens your browser, then brings you back.`, blocks: true, progress: undefined, action: { label: "Sign in", does: "signIn", primary: true }, engines: [] };
   if (busy.length > 0 || r.agent === "installing") {
     const what = busy.length > 0 ? names(busy) : r.agentName;

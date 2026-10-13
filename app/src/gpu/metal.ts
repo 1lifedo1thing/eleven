@@ -1,14 +1,14 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { promisify } from "node:util";
 
 import type { Binding, FunctionKind, ShaderFunction, ShaderLibrary } from "./types";
+import { cacheRoot } from "../lib/platform";
 
 const run = promisify(execFile);
-const CACHE = join(homedir(), "Library", "Caches", "eleven");
+const CACHE = cacheRoot();
 const MAX_FUNCTIONS = 400;
 const MAX_IR_LINES = 400;
 

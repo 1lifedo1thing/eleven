@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 
 import { reaLaunch } from "../engine/rea";
 import { enginesDir } from "../engine/toolchain";
+import { ANALYZE_HEADLESS, exe, jdkLocations, THIS_DEVICE } from "../lib/platform";
 
 const run = promisify(execFile);
 const HOME = homedir();
@@ -17,20 +18,12 @@ export type Check = { readonly key: string; readonly status: CheckStatus; readon
 
 const GHIDRA_PARENTS = [enginesDir(), join(HOME, ".local", "share"), join(HOME, "Applications"), HOME, "/Applications", "/opt", "/opt/homebrew/Caskroom/ghidra", "/usr/local/Caskroom/ghidra"] as const;
 
-const JDK_HOMES: readonly (readonly [parent: string, suffix: string])[] = [
-  [enginesDir(), "Contents/Home"],
-  ["/Library/Java/JavaVirtualMachines", "Contents/Home"],
-  ["/opt/homebrew/Cellar/openjdk@21", "libexec/openjdk.jdk/Contents/Home"],
-  ["/opt/homebrew/Cellar/openjdk", "libexec/openjdk.jdk/Contents/Home"],
-  ["/usr/local/Cellar/openjdk", "libexec/openjdk.jdk/Contents/Home"],
-  ["/opt/zerobrew/prefix/Cellar/openjdk", "libexec/openjdk.jdk/Contents/Home"],
-  [join(HOME, "Library", "Java", "JavaVirtualMachines"), "Contents/Home"],
-];
+const JDK_HOMES = jdkLocations(enginesDir());
 
 export const PENDING: readonly Check[] = [
-  { key: "ghidra", status: "checking", title: "Ghidra", detail: "Looking on this Mac" },
-  { key: "java", status: "checking", title: "Java", detail: "Looking on this Mac" },
-  { key: "rea", status: "checking", title: "REA", detail: "Looking on this Mac" },
+  { key: "ghidra", status: "checking", title: "Ghidra", detail: `Looking on ${THIS_DEVICE}` },
+  { key: "java", status: "checking", title: "Java", detail: `Looking on ${THIS_DEVICE}` },
+  { key: "rea", status: "checking", title: "REA", detail: `Looking on ${THIS_DEVICE}` },
   cacheCheck(),
 ];
 
@@ -61,9 +54,9 @@ function tildify(path: string): string {
 
 export function ghidraHome(): string | null {
   const fromEnv = process.env.GHIDRA_INSTALL_DIR;
-  if (fromEnv && existsSync(join(fromEnv, "support", "analyzeHeadless"))) return fromEnv;
+  if (fromEnv && existsSync(join(fromEnv, "support", ANALYZE_HEADLESS))) return fromEnv;
   const homes = GHIDRA_PARENTS.flatMap((parent) => children(parent).flatMap((dir) => [dir, ...children(dir)]));
-  return homes.filter((dir) => /ghidra_[\d.]+_PUBLIC$/i.test(dir) && existsSync(join(dir, "support", "analyzeHeadless"))).sort(newestFirst)[0] ?? null;
+  return homes.filter((dir) => /ghidra_[\d.]+_PUBLIC$/i.test(dir) && existsSync(join(dir, "support", ANALYZE_HEADLESS))).sort(newestFirst)[0] ?? null;
 }
 
 function ghidraVersion(home: string): string {
@@ -80,6 +73,7 @@ function decompilerNote(home: string): string {
   const os = join(home, "Ghidra", "Features", "Decompiler", "os");
   if (existsSync(join(os, "mac_arm_64", "decompile"))) return "with an arm64 decompiler";
   if (existsSync(join(os, "mac_x86_64", "decompile"))) return "with an Intel decompiler that runs under Rosetta";
+  if (existsSync(join(os, "linux_x86_64", "decompile")) || existsSync(join(os, "win_x86_64", "decompile.exe"))) return "with its decompiler";
   return "but its decompiler is missing, so code won't show";
 }
 
@@ -92,9 +86,9 @@ function ghidraCheck(): Check {
 
 export function jdkHome(): string | null {
   const fromEnv = process.env.JAVA_HOME;
-  if (fromEnv && existsSync(join(fromEnv, "bin", "java"))) return fromEnv;
+  if (fromEnv && existsSync(join(fromEnv, "bin", exe("java")))) return fromEnv;
   const homes = JDK_HOMES.flatMap(([parent, suffix]) => children(parent).map((dir) => join(dir, suffix)));
-  return homes.filter((home) => existsSync(join(home, "bin", "java"))).sort(newestFirst)[0] ?? null;
+  return homes.filter((home) => existsSync(join(home, "bin", exe("java")))).sort(newestFirst)[0] ?? null;
 }
 
 function javaMajor(home: string): number | null {
@@ -114,7 +108,7 @@ export function javaCheck(): Check {
   const major = javaMajor(home);
   const title = major === null ? "Java" : `Java ${major}`;
   if (major !== null && major < MIN_JAVA) return { key: "java", status: "problem", title, detail: `Ghidra needs Java ${MIN_JAVA} or newer. Install a newer JDK, then restart Eleven.` };
-  if (!existsSync(join(home, "bin", "javac"))) return { key: "java", status: "problem", title, detail: "Only a Java runtime was found. Ghidra needs the full JDK." };
+  if (!existsSync(join(home, "bin", exe("javac")))) return { key: "java", status: "problem", title, detail: "Only a Java runtime was found. Ghidra needs the full JDK." };
   return { key: "java", status: "ok", title, detail: "Full JDK found. Eleven will ship its own later." };
 }
 

@@ -18,6 +18,7 @@ import type { Agents } from "./useAgents";
 import type { Thread } from "./useThread";
 import { noteTyping } from "../lib/shortcuts";
 import { useDropTarget } from "../Shell";
+import { primaryHeld } from "../lib/platform";
 
 export type ComposerPlace = "landing" | "conversation" | "dock";
 
@@ -199,7 +200,7 @@ export function Composer({ place, target, agents, thread, onAttach, onDetach, on
   const onKeyDown = (event: EventPayload): void => {
     noteTyping(event);
     if (event.key === "escape" && thread.busy) thread.stop();
-    if (commandReturn && event.key === "enter" && event.modifiers?.cmd) submit();
+    if (commandReturn && event.key === "enter" && primaryHeld(event.modifiers)) submit();
   };
   const pick = (item: PaletteItem): void => {
     switch (item.kind) {

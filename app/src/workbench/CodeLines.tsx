@@ -19,6 +19,7 @@ import { type Bench, useBench } from "./parts";
 import { formatOperand, isOperandFormat, type Lookup, type Symbolic } from "../engine/operands";
 import type { LineRange } from "./state";
 import { lineAddress, splitWords, type Subject, type Token, wordAddress } from "./subject";
+import { primaryHeld } from "../lib/platform";
 
 type View = "pseudo" | "asm";
 
@@ -159,8 +160,8 @@ function Line({ fn, view, text, number, focused, margin, found = "no", spans = n
   const ranged = inRange(wb.s.lineRange, fn, view, number);
   const pick = (token: Token | null, event?: EventPayload): void => {
     const target = token?.addr;
-    if (event?.modifiers?.cmd && target) {
-      if (event.modifiers.alt && isFunction(bench, target)) wb.openSplit({ kind: "fn", addr: target });
+    if (primaryHeld(event?.modifiers) && target) {
+      if (event?.modifiers?.alt && isFunction(bench, target)) wb.openSplit({ kind: "fn", addr: target });
       else if (isFunction(bench, target)) openFn(target, false);
       else goTo(bench, target);
       return;

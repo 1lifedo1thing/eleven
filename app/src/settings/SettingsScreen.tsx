@@ -20,6 +20,7 @@ import { Nav } from "./Nav";
 import { KEYBOARD_WORDS, type Page, PAGES, pageIntro, pageTitle } from "./pages";
 import { type Settings, useSettings } from "./store";
 import { appVersion, openLink } from "./system";
+import { OS_NAME, THIS_DEVICE } from "../lib/platform";
 
 const TOAST_MS = 2200;
 
@@ -96,7 +97,7 @@ export function SettingsScreen({ initial = "general", onBack, onSetup }: { reado
     rescan: () => void (async () => {
       const found = await detectInstalled(agents.list);
       setRescanned(found);
-      toast(`Found ${found.size} ${found.size === 1 ? "agent" : "agents"} on this Mac`);
+      toast(`Found ${found.size} ${found.size === 1 ? "agent" : "agents"} on ${THIS_DEVICE}`);
     })(),
     install: (id) => void (async () => {
       const agent = agents.list.find((entry) => entry.id === id);
@@ -113,7 +114,7 @@ export function SettingsScreen({ initial = "general", onBack, onSetup }: { reado
     checkEngine: (id) => void checkEngine(id),
     copyDetails: () => void (async () => {
       const details = [
-        `Eleven ${appVersion()} (${process.arch}, macOS ${release()})`,
+        `Eleven ${appVersion()} (${process.arch}, ${OS_NAME} ${release()})`,
         `Engine: ${activeEngine()?.name ?? "none"}`,
         `Rizin: ${info.engines.rizin.version ?? "not found"}`,
         `Ghidra: ${info.engines.ghidra.version ?? "not found"}`,

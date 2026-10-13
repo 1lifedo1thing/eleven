@@ -1,6 +1,5 @@
 import { execFile } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
@@ -8,12 +7,13 @@ import { deleteThread, listThreads } from "../chat/history";
 import { RECORDINGS_DIR } from "../gpu/trace";
 import { supportPath } from "../lib/support";
 import { currentSettings } from "./store";
+import { cacheRoot, copyToClipboard, exe, trash } from "../lib/platform";
 
 const run = promisify(execFile);
 
 export const PROJECTS_DIR = supportPath("projects");
 export const THREADS_DIR = supportPath("threads");
-export const DEFAULT_CACHE_DIR = join(homedir(), "Library", "Caches", "eleven", "analysis");
+export const DEFAULT_CACHE_DIR = join(cacheRoot(), "analysis");
 
 export function cacheDir(): string {
   return currentSettings().cacheDir || DEFAULT_CACHE_DIR;
@@ -65,18 +65,14 @@ export function clearRecordings(): void {
 /** Moves a file or folder to the Trash, so removing an engine can be undone from Finder. */
 export async function moveToTrash(path: string): Promise<boolean> {
   try {
-    await run("osascript", ["-e", `tell application "Finder" to delete POSIX file "${path.replace(/"/g, "")}"`]);
-    return true;
+    return await trash(path);
   } catch {
     return false;
   }
 }
 
 export async function copyText(text: string): Promise<void> {
-  await new Promise<void>((resolve) => {
-    const child = execFile("pbcopy", () => resolve());
-    child.stdin?.end(text);
-  });
+  await copyToClipboard(text);
 }
 
 export type Release = { readonly version: string; readonly url: string };
@@ -127,7 +123,7 @@ export function ghidraVersion(folder: string): string | null {
 
 export async function javaVersion(home: string): Promise<string | null> {
   try {
-    const { stderr } = await run(join(home, "bin", "java"), ["-version"]);
+    const { stderr } = await run(join(home, "bin", exe("java")), ["-version"]);
     return /version "(\d+)/.exec(stderr)?.[1] ?? null;
   } catch {
     return null;

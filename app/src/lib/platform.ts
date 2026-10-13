@@ -1,0 +1,282 @@
+import { execFile, execFileSync, spawn } from "node:child_process";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { promisify } from "node:util";
+
+const run = promisify(execFile);
+
+export type Os = "mac" | "linux" | "windows";
+
+export const OS: Os = process.platform === "darwin" ? "mac" : process.platform === "win32" ? "windows" : "linux";
+
+const HOME = homedir();
+
+/** Where Eleven keeps your work and settings: Application Support, XDG data, or AppData. */
+export function dataRoot(): string {
+  switch (OS) {
+    case "mac":
+      return join(HOME, "Library", "Application Support", "Eleven");
+    case "linux":
+      return join(process.env.XDG_DATA_HOME || join(HOME, ".local", "share"), "eleven");
+    case "windows":
+      return join(process.env.APPDATA || join(HOME, "AppData", "Roaming"), "Eleven");
+    default: {
+      const unhandled: never = OS;
+      return unhandled;
+    }
+  }
+}
+
+/** Where Eleven keeps things it can rebuild: decompiled code, downloads, agent installs. */
+export function cacheRoot(): string {
+  switch (OS) {
+    case "mac":
+      return join(HOME, "Library", "Caches", "eleven");
+    case "linux":
+      return join(process.env.XDG_CACHE_HOME || join(HOME, ".cache"), "eleven");
+    case "windows":
+      return join(process.env.LOCALAPPDATA || join(HOME, "AppData", "Local"), "Eleven", "Cache");
+    default: {
+      const unhandled: never = OS;
+      return unhandled;
+    }
+  }
+}
+
+/** The file manager's name, for copy like "Show in Finder". */
+export const FILE_MANAGER = OS === "mac" ? "Finder" : OS === "windows" ? "File Explorer" : "Files";
+
+function detached(command: string, args: readonly string[]): void {
+  try {
+    spawn(command, [...args], { detached: true, stdio: "ignore" }).unref();
+  } catch {
+    return;
+  }
+}
+
+/** Shows a file selected in the file manager. */
+export function reveal(path: string): void {
+  if (OS === "mac") detached("open", ["-R", path]);
+  else if (OS === "windows") detached("explorer.exe", [`/select,${path}`]);
+  else detached("xdg-open", [join(path, "..")]);
+}
+
+/** Opens a link in the browser, or a file or folder with its usual app. */
+export function openExternal(target: string): void {
+  if (OS === "mac") detached("open", [target]);
+  else if (OS === "windows") detached("cmd.exe", ["/c", "start", "", target]);
+  else detached("xdg-open", [target]);
+}
+
+/** Moves a file or folder to the Trash or Recycle Bin, so it can be restored. */
+export async function trash(path: string): Promise<boolean> {
+  try {
+    if (OS === "mac") await run("osascript", ["-e", `tell application "Finder" to delete POSIX file "${path.replace(/"/g, "")}"`]);
+    else if (OS === "windows") await run("powershell.exe", ["-NoProfile", "-Command", `Add-Type -AssemblyName Microsoft.VisualBasic; $p='${path.replace(/'/g, "''")}'; if (Test-Path $p -PathType Container) { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($p,'OnlyErrorDialogs','SendToRecycleBin') } else { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($p,'OnlyErrorDialogs','SendToRecycleBin') }`]);
+    else await run("gio", ["trash", path]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function linuxCopier(): readonly string[] | null {
+  if (process.env.WAYLAND_DISPLAY) return ["wl-copy"];
+  return ["xclip", "-selection", "clipboard"];
+}
+
+/** Puts text on the clipboard. */
+export function copyToClipboard(text: string): Promise<void> {
+  const command = OS === "mac" ? ["pbcopy"] : OS === "windows" ? ["clip.exe"] : linuxCopier();
+  const [program, ...args] = command ?? [];
+  if (!program) return Promise.resolve();
+  return new Promise((resolve) => {
+    try {
+      const child = spawn(program, args, { stdio: ["pipe", "ignore", "ignore"] });
+      child.once("error", () => resolve());
+      child.once("close", () => resolve());
+      child.stdin.end(text);
+    } catch {
+      resolve();
+    }
+  });
+}
+
+/** The text on the clipboard, or "" when there is none or it can't be read. */
+export function readClipboard(): string {
+  const command = OS === "mac" ? ["pbpaste"] : OS === "windows" ? ["powershell.exe", "-NoProfile", "-Command", "Get-Clipboard -Raw"] : process.env.WAYLAND_DISPLAY ? ["wl-paste", "--no-newline"] : ["xclip", "-selection", "clipboard", "-o"];
+  const [program, ...args] = command;
+  if (!program) return "";
+  try {
+    return execFileSync(program, args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  } catch {
+    return "";
+  }
+}
+
+/** Whether the system is in dark mode, where the OS will say. */
+export function systemDark(): boolean {
+  try {
+    if (OS === "mac") return execFileSync("defaults", ["read", "-g", "AppleInterfaceStyle"], { encoding: "utf8", stdio: "pipe" }).trim() === "Dark";
+    if (OS === "windows") return execFileSync("reg", ["query", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize", "/v", "AppsUseLightTheme"], { encoding: "utf8", stdio: "pipe" }).includes("0x0");
+    return /dark/i.test(execFileSync("gsettings", ["get", "org.gnome.desktop.interface", "color-scheme"], { encoding: "utf8", stdio: "pipe" }));
+  } catch {
+    return false;
+  }
+}
+
+/** A desktop notification. */
+export async function notify(title: string, body: string): Promise<void> {
+  const quoted = (text: string): string => `"${text.replace(/["\\]/g, "\\$&")}"`;
+  try {
+    if (OS === "mac") await run("osascript", ["-e", `display notification ${quoted(body)} with title ${quoted(title)}`]);
+    else if (OS === "linux") await run("notify-send", [title, body]);
+    else await run("powershell.exe", ["-NoProfile", "-Command", `[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null; $x = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02); $t = $x.GetElementsByTagName('text'); $t.Item(0).AppendChild($x.CreateTextNode('${title.replace(/'/g, "''")}')) > $null; $t.Item(1).AppendChild($x.CreateTextNode('${body.replace(/'/g, "''")}')) > $null; [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Eleven').Show([Windows.UI.Notifications.ToastNotification]::new($x))`]);
+  } catch {
+    return;
+  }
+}
+
+/** A short alert sound. */
+export async function chime(): Promise<void> {
+  try {
+    if (OS === "mac") await run("afplay", ["/System/Library/Sounds/Glass.aiff"]);
+    else if (OS === "linux") await run("canberra-gtk-play", ["-i", "message-new-instant"]);
+    else await run("powershell.exe", ["-NoProfile", "-Command", "[System.Media.SystemSounds]::Asterisk.Play()"]);
+  } catch {
+    return;
+  }
+}
+
+/** Whether Eleven is the app in front, so notifications only show when you're elsewhere. Unknown counts as not in front. */
+export async function inFront(): Promise<boolean> {
+  if (OS !== "mac") return false;
+  try {
+    const { stdout } = await run("osascript", ["-e", 'tell application "System Events" to get unix id of first application process whose frontmost is true']);
+    return Number(stdout.trim()) === process.pid;
+  } catch {
+    return false;
+  }
+}
+
+/** Runs a command in a new terminal window, for installs that need you to answer a prompt. */
+export function runInTerminal(command: string): void {
+  if (OS === "mac") {
+    detached("osascript", ["-e", `tell application "Terminal" to do script "${command.replace(/["\\]/g, "\\$&")}"`, "-e", 'tell application "Terminal" to activate']);
+    return;
+  }
+  if (OS === "windows") {
+    detached("cmd.exe", ["/c", "start", "cmd.exe", "/k", command]);
+    return;
+  }
+  detached("x-terminal-emulator", ["-e", "sh", "-c", `${command}; exec sh`]);
+}
+
+async function firstLine(command: string, args: readonly string[]): Promise<string | null> {
+  try {
+    const { stdout } = await run(command, [...args]);
+    const chosen = stdout.trim().replace(/(.)[/\\]$/, "$1");
+    return chosen === "" ? null : chosen;
+  } catch {
+    return null;
+  }
+}
+
+function psQuote(text: string): string {
+  return `'${text.replace(/'/g, "''")}'`;
+}
+
+/** Asks for a folder or a file with the system's own dialog; null when you cancel. */
+export function choosePath(kind: "folder" | "file", prompt: string): Promise<string | null> {
+  const clean = prompt.replace(/"/g, "");
+  if (OS === "mac") return firstLine("osascript", ["-e", `POSIX path of (choose ${kind} with prompt "${clean}")`]);
+  if (OS === "windows") {
+    const dialog = kind === "folder"
+      ? `$d = New-Object System.Windows.Forms.FolderBrowserDialog; $d.Description = ${psQuote(clean)}; if ($d.ShowDialog() -eq 'OK') { $d.SelectedPath }`
+      : `$d = New-Object System.Windows.Forms.OpenFileDialog; $d.Title = ${psQuote(clean)}; if ($d.ShowDialog() -eq 'OK') { $d.FileName }`;
+    return firstLine("powershell.exe", ["-NoProfile", "-STA", "-Command", `Add-Type -AssemblyName System.Windows.Forms; ${dialog}`]);
+  }
+  return firstLine("zenity", ["--file-selection", ...(kind === "folder" ? ["--directory"] : []), `--title=${clean}`]);
+}
+
+/** Asks where to save a file, starting in `folder` with `name` filled in; null when you cancel. */
+export function chooseSavePath(prompt: string, name: string, folder: string): Promise<string | null> {
+  const clean = prompt.replace(/"/g, "");
+  if (OS === "mac") return firstLine("osascript", ["-e", `POSIX path of (choose file name with prompt "${clean}" default name "${name.replace(/"/g, "")}" default location (POSIX file "${folder.replace(/"/g, "")}"))`]);
+  if (OS === "windows") {
+    return firstLine("powershell.exe", ["-NoProfile", "-STA", "-Command", `Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.SaveFileDialog; $d.Title = ${psQuote(clean)}; $d.FileName = ${psQuote(name)}; $d.InitialDirectory = ${psQuote(folder)}; if ($d.ShowDialog() -eq 'OK') { $d.FileName }`]);
+  }
+  return firstLine("zenity", ["--file-selection", "--save", "--confirm-overwrite", `--title=${clean}`, `--filename=${join(folder, name)}`]);
+}
+
+/** A program's file name on this OS: `java` here, `java.exe` on Windows. */
+export function exe(name: string): string {
+  return OS === "windows" ? `${name}.exe` : name;
+}
+
+/** Ghidra's headless launcher: a shell script, or a batch file on Windows. */
+export const ANALYZE_HEADLESS = OS === "windows" ? "analyzeHeadless.bat" : "analyzeHeadless";
+
+/** Where JDKs live on this OS, as a folder of installs and the path from each install to its home. */
+export function jdkLocations(engines: string): readonly (readonly [parent: string, suffix: string])[] {
+  const home = homedir();
+  switch (OS) {
+    case "mac":
+      return [
+        [engines, "Contents/Home"],
+        ["/Library/Java/JavaVirtualMachines", "Contents/Home"],
+        ["/opt/homebrew/Cellar/openjdk@21", "libexec/openjdk.jdk/Contents/Home"],
+        ["/opt/homebrew/Cellar/openjdk", "libexec/openjdk.jdk/Contents/Home"],
+        ["/usr/local/Cellar/openjdk", "libexec/openjdk.jdk/Contents/Home"],
+        ["/opt/zerobrew/prefix/Cellar/openjdk", "libexec/openjdk.jdk/Contents/Home"],
+        [join(home, "Library", "Java", "JavaVirtualMachines"), "Contents/Home"],
+      ];
+    case "linux":
+      return [[engines, ""], ["/usr/lib/jvm", ""], ["/opt/java", ""], [join(home, ".jdks"), ""]];
+    case "windows":
+      return [[engines, ""], ["C:\\Program Files\\Eclipse Adoptium", ""], ["C:\\Program Files\\Java", ""], ["C:\\Program Files\\Microsoft", ""], [join(home, ".jdks"), ""]];
+    default: {
+      const unhandled: never = OS;
+      return unhandled;
+    }
+  }
+}
+
+/** Unpacks a .zip into a folder with whatever this OS has built in. */
+export async function unzip(file: string, into: string): Promise<void> {
+  const options = { timeout: 300000, maxBuffer: 1 << 24 };
+  if (OS === "mac") await run("ditto", ["-x", "-k", file, into], options);
+  else if (OS === "windows") await run("tar.exe", ["-xf", file, "-C", into], options);
+  else {
+    try {
+      await run("unzip", ["-q", "-o", file, "-d", into], options);
+    } catch {
+      await run("python3", ["-m", "zipfile", "-e", file, into], options);
+    }
+  }
+}
+
+/** The command key in copy: ⌘ on the Mac, Ctrl elsewhere. */
+export const MOD = OS === "mac" ? "⌘" : "Ctrl+";
+
+/** Whether the command key (⌘, or Ctrl off the Mac) is held. */
+export function primaryHeld(mods: { readonly cmd?: boolean; readonly ctrl?: boolean } | undefined): boolean {
+  return (OS === "mac" ? mods?.cmd : mods?.ctrl) ?? false;
+}
+
+/** How copy refers to the machine: "this Mac" on a Mac, "this computer" elsewhere. */
+export const THIS_DEVICE = OS === "mac" ? "this Mac" : "this computer";
+
+export const OS_NAME = OS === "mac" ? "macOS" : OS === "windows" ? "Windows" : "Linux";
+
+/** A small program every machine has, for the first-run example, with questions that suit it. */
+export const SAMPLE_APP: { readonly path: string; readonly name: string; readonly ideas: readonly string[] } =
+  OS === "mac"
+    ? { path: "/System/Applications/Calculator.app", name: "Calculator", ideas: ["What happens when I press the equals key? Walk me through the code.", "How does it keep the history of past results?", "Where does it switch between Basic and Scientific?"] }
+    : OS === "windows"
+      ? { path: "C:\\Windows\\System32\\notepad.exe", name: "Notepad", ideas: ["What happens when I save a file? Walk me through the code.", "How does it find text with Find and Replace?", "Where does it decide which encoding to use?"] }
+      : { path: "/usr/bin/bc", name: "bc", ideas: ["What happens when I type 2+2 and press Enter? Walk me through the code.", "How does it parse an expression?", "Where does it handle numbers with many digits?"] };
+
+/** Programs to suggest opening on a first run, when they exist here. */
+export const STARTER_FILES: readonly string[] =
+  OS === "mac" ? ["/System/Applications/Notes.app", "/bin/ls", "/usr/bin/curl"] : OS === "windows" ? ["C:\\Windows\\System32\\notepad.exe", "C:\\Windows\\System32\\curl.exe", "C:\\Windows\\System32\\whoami.exe"] : ["/bin/ls", "/usr/bin/curl", "/usr/bin/bc"];

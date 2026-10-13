@@ -1,4 +1,3 @@
-import { execFile } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -6,6 +5,7 @@ import { join } from "node:path";
 import { findOnPath, type NativeCommand } from "../agents/detect";
 import { binaryInstalled, readyToRun, resolveLaunch } from "../agents/launch";
 import type { AgentEntry } from "../agents/registry";
+import { runInTerminal as openTerminal, THIS_DEVICE } from "../lib/platform";
 
 const HOME = homedir();
 
@@ -54,12 +54,12 @@ function loginCommand(login: Login): string | null {
 function missingDetail(agent: AgentEntry): string {
   switch (agent.distribution.kind) {
     case "npx":
-      return "Needs Node.js, which isn't on this Mac";
+      return `Needs Node.js, which isn't on ${THIS_DEVICE}`;
     case "uvx":
-      return "Needs uv, which isn't on this Mac";
+      return `Needs uv, which isn't on ${THIS_DEVICE}`;
     case "binary":
     case "command":
-      return "Not found on this Mac";
+      return `Not found on ${THIS_DEVICE}`;
     default: {
       const unhandled: never = agent.distribution;
       return unhandled;
@@ -74,7 +74,7 @@ export function agentStatus(agent: AgentEntry, facts: AgentFacts): AgentStatus {
   if (agent.distribution.kind === "binary" && !facts.native && !facts.downloaded) return facts.failed ? { kind: "failed" } : { kind: "install" };
   if (!readyToRun(agent, facts.native)) return { kind: "unavailable", detail: missingDetail(agent) };
   const login = LOGINS[agent.id];
-  const where = facts.native ? "On this Mac" : null;
+  const where = facts.native ? `On ${THIS_DEVICE}` : null;
   if (!login) return { kind: "ready", detail: where ?? "Ready" };
   if (login.signedIn()) return { kind: "ready", detail: where ? `${where}, signed in` : "Signed in" };
   return loginCommand(login) ? { kind: "signin" } : { kind: "ready", detail: where ?? "Ready" };
@@ -125,6 +125,5 @@ export function signOut(agent: AgentEntry): void {
 }
 
 function runInTerminal(command: string | null): void {
-  if (!command) return;
-  execFile("osascript", ["-e", `tell application "Terminal" to do script "${command}"`, "-e", 'tell application "Terminal" to activate'], () => undefined);
+  if (command) openTerminal(command);
 }

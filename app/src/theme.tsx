@@ -1,8 +1,8 @@
-import { execFileSync } from "node:child_process";
 import type { GpuixTheme } from "@gpuix/react";
 import { createContext, useContext } from "react";
 
 import type { CodeLook, Syntax } from "./settings/look";
+import { systemDark as platformDark } from "./lib/platform";
 
 export const SANS = ".SystemUIFont";
 export const MONO = "JetBrains Mono";
@@ -102,11 +102,11 @@ export const LIGHT: Palette = {
 
 let systemDark: boolean | null = null;
 
-/** Asked once: spawning `defaults` blocks the frame loop, and App renders on every chat update. */
+/** Asked once: asking the OS blocks the frame loop, and App renders on every chat update. */
 export function systemIsDark(): boolean {
   if (systemDark !== null) return systemDark;
   try {
-    systemDark = execFileSync("defaults", ["read", "-g", "AppleInterfaceStyle"], { encoding: "utf8", stdio: "pipe" }).trim() === "Dark";
+    systemDark = platformDark();
   } catch {
     systemDark = false;
   }

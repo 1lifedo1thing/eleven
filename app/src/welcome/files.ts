@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 import { basename, dirname, extname, join } from "node:path";
 
 import { type RecentOpen, recentOpens } from "./store";
+import { STARTER_FILES } from "../lib/platform";
 
 export type FileKind = "app" | "binary" | "gpu" | "model";
 
@@ -20,7 +21,7 @@ const ROWS = 4;
 const HOME = homedir();
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HOST_SLICES = process.arch === "arm64" ? (["arm64e", "arm64"] as const) : (["x86_64h", "x86_64"] as const);
-const STARTERS = ["/System/Applications/Notes.app", "/bin/ls", "/usr/bin/curl"] as const;
+const STARTERS = STARTER_FILES;
 
 function tool(command: string, args: readonly string[]): string {
   try {

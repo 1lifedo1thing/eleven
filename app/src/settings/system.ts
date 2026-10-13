@@ -1,13 +1,12 @@
-import { execFile } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join } from "node:path";
-import { promisify } from "node:util";
 
 import { findOnPath } from "../agents/detect";
 import { stringField } from "../lib/guards";
 import { reaLaunch } from "../engine/rea";
 import { currentSettings, type PathKey, pathSetting } from "./store";
+import { choosePath, openExternal, reveal } from "../lib/platform";
 
 export type Found =
   | { readonly kind: "found"; readonly path: string; readonly source: string }
@@ -19,11 +18,11 @@ export function tildePath(path: string): string {
 }
 
 export function showInFinder(path: string): void {
-  execFile("open", ["-R", path], () => {});
+  reveal(path);
 }
 
 export function openLink(url: string): void {
-  execFile("open", [url], () => {});
+  openExternal(url);
 }
 
 function fromEnv(key: PathKey, name: string, fix: string): Found {
@@ -74,16 +73,8 @@ export function appVersion(): string {
   return versionFromPackage() ?? versionFromBundle() ?? "Unknown";
 }
 
-const execFileAsync = promisify(execFile);
 
-/** Asks for a folder or a file with the macOS panel; null when you cancel. */
-export async function pickPath(kind: "folder" | "file", prompt: string): Promise<string | null> {
-  const script = `POSIX path of (choose ${kind} with prompt "${prompt.replace(/"/g, "")}")`;
-  try {
-    const { stdout } = await execFileAsync("osascript", ["-e", script]);
-    const chosen = stdout.trim().replace(/(.)\/$/, "$1");
-    return chosen === "" ? null : chosen;
-  } catch {
-    return null;
-  }
+/** Asks for a folder or a file with the system's own dialog; null when you cancel. */
+export function pickPath(kind: "folder" | "file", prompt: string): Promise<string | null> {
+  return choosePath(kind, prompt);
 }

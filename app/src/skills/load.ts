@@ -1,8 +1,8 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
 import { currentSettings } from "../settings/store";
+import { dataRoot } from "../lib/platform";
 
 /** One of Eleven's reverse-engineering playbooks: a name, a one-line description, and the instructions sent to the agent. */
 export type Skill = { readonly name: string; readonly description: string; readonly body: string };
@@ -12,7 +12,7 @@ const MAX_BODY = 8000;
 function skillDirs(): readonly string[] {
   const bundled = join(dirname(process.execPath), "..", "Resources", "skills");
   const dev = join(import.meta.dir, "..", "..", "skills");
-  const user = currentSettings().skillsDir || join(homedir(), "Library", "Application Support", "Eleven", "skills");
+  const user = currentSettings().skillsDir || join(dataRoot(), "skills");
   return [existsSync(bundled) ? bundled : dev, user].filter(existsSync);
 }
 

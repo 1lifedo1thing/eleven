@@ -4,6 +4,7 @@ import { dirname } from "node:path";
 
 import { errorMessage, isRecord } from "../lib/guards";
 import { BRIDGE_ENV, type BridgeCaller, type BridgeReply, type BridgeTool, bridgePath, isBridgeTool } from "./protocol";
+import { OS } from "../lib/platform";
 
 export type BridgeHandler = (tool: BridgeTool, args: Readonly<Record<string, string>>, from: BridgeCaller) => Promise<string>;
 
@@ -31,8 +32,11 @@ async function answer(line: string, handle: BridgeHandler): Promise<BridgeReply>
 /** Listens on a local socket so the `eleven` MCP server inside each agent can reach this window. */
 export function startBridge(handle: BridgeHandler): Server {
   const path = bridgePath();
-  mkdirSync(dirname(path), { recursive: true });
-  rmSync(path, { force: true });
+  const pipe = OS === "windows";
+  if (!pipe) {
+    mkdirSync(dirname(path), { recursive: true });
+    rmSync(path, { force: true });
+  }
   const server = createServer((socket) => {
     let buffer = "";
     socket.on("data", (chunk: Buffer) => {
@@ -49,6 +53,6 @@ export function startBridge(handle: BridgeHandler): Server {
   });
   server.listen(path);
   process.env[BRIDGE_ENV] = path;
-  process.on("exit", () => rmSync(path, { force: true }));
+  if (!pipe) process.on("exit", () => rmSync(path, { force: true }));
   return server;
 }

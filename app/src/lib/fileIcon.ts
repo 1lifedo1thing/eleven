@@ -1,12 +1,12 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import { cacheRoot, OS } from "./platform";
 
 const run = promisify(execFile);
-const ICON_DIR = join(homedir(), "Library", "Caches", "eleven", "icons");
+const ICON_DIR = join(cacheRoot(), "icons");
 const SIZE = 256;
 
 const DRAW_ICON = `ObjC.import('AppKit');
@@ -27,6 +27,7 @@ function cachedPng(source: string): string {
 }
 
 async function render(source: string, out: string): Promise<string | null> {
+  if (OS !== "mac") return null;
   try {
     mkdirSync(ICON_DIR, { recursive: true });
     if (/\.(ico|icns|png)$/i.test(source)) await run("sips", ["-s", "format", "png", "-Z", String(SIZE), source, "--out", out]);

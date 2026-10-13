@@ -1,11 +1,11 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import { join } from "node:path";
 
 import { errorMessage, isRecord, recordField, stringField } from "../lib/guards";
+import { cacheRoot } from "../lib/platform";
 
 const REGISTRY_URL = "https://cdn.agentclientprotocol.com/registry/v1/latest/registry.json";
-const CACHE_DIR = join(homedir(), "Library", "Caches", "eleven", "agents");
+const CACHE_DIR = join(cacheRoot(), "agents");
 const REGISTRY_FILE = join(CACHE_DIR, "registry.json");
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 

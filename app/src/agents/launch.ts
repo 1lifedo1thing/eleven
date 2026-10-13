@@ -1,15 +1,16 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { access, chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
 import { findOnPath, type NativeCommand } from "./detect";
 import type { AgentEntry, BinaryBuild, Env } from "./registry";
+import { cacheRoot, OS } from "../lib/platform";
+import { npxCommand } from "../engine/toolchain";
 
 const run = promisify(execFile);
-const INSTALL_DIR = join(homedir(), "Library", "Caches", "eleven", "agents", "bin");
+const INSTALL_DIR = join(cacheRoot(), "agents", "bin");
 
 export type Launch = { readonly command: string; readonly args: readonly string[]; readonly env: Env };
 
@@ -71,9 +72,10 @@ function unpinned(pkg: string): string {
 export async function resolveLaunch(agent: AgentEntry, native: NativeCommand | null): Promise<Launch> {
   if (native) return { command: native.path, args: native.args, env: {} };
   const dist = agent.distribution;
+  const npx = npxCommand();
   switch (dist.kind) {
     case "npx":
-      return { command: "npx", args: ["-y", unpinned(dist.run.package), ...dist.run.args], env: dist.run.env };
+      return { command: npx.command, args: [...npx.args, "-y", unpinned(dist.run.package), ...dist.run.args], env: dist.run.env };
     case "uvx":
       return { command: "uvx", args: [dist.run.package, ...dist.run.args], env: dist.run.env };
     case "binary":
@@ -88,7 +90,7 @@ export async function resolveLaunch(agent: AgentEntry, native: NativeCommand | n
 }
 
 export function installHint(agent: AgentEntry, native: NativeCommand | null): string {
-  if (native) return "Installed on this Mac";
+  if (native) return OS === "mac" ? "Installed on this Mac" : "Installed on this computer";
   switch (agent.distribution.kind) {
     case "npx":
       return "Runs with npx";
@@ -97,7 +99,7 @@ export function installHint(agent: AgentEntry, native: NativeCommand | null): st
     case "binary":
       return "Downloads on first use";
     case "command":
-      return "Not found on this Mac";
+      return OS === "mac" ? "Not found on this Mac" : "Not found on this computer";
     default: {
       const unhandled: never = agent.distribution;
       return String(unhandled);
@@ -110,7 +112,7 @@ export function readyToRun(agent: AgentEntry, native: NativeCommand | null): boo
   if (native) return true;
   switch (agent.distribution.kind) {
     case "npx":
-      return findOnPath("npx") !== null;
+      return npxCommand().command !== "npx" || findOnPath("npx") !== null;
     case "uvx":
       return findOnPath("uvx") !== null;
     case "binary":

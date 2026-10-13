@@ -1,8 +1,9 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readlinkSync } from "node:fs";
 import { homedir, totalmem } from "node:os";
-import { dirname, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 
+import { ANALYZE_HEADLESS, exe, jdkLocations, OS } from "../lib/platform";
 import { supportPath } from "../lib/support";
 import { currentSettings, type Settings } from "../settings/store";
 
@@ -24,15 +25,7 @@ const GHIDRA_PARENTS = [
   "/usr/local/Caskroom/ghidra",
 ] as const;
 
-const JDK_GLOBS: readonly (readonly [parent: string, suffix: string])[] = [
-  [enginesDir(), "Contents/Home"],
-  ["/Library/Java/JavaVirtualMachines", "Contents/Home"],
-  ["/opt/homebrew/Cellar/openjdk@21", "libexec/openjdk.jdk/Contents/Home"],
-  ["/opt/homebrew/Cellar/openjdk", "libexec/openjdk.jdk/Contents/Home"],
-  ["/usr/local/Cellar/openjdk", "libexec/openjdk.jdk/Contents/Home"],
-  ["/opt/zerobrew/prefix/Cellar/openjdk", "libexec/openjdk.jdk/Contents/Home"],
-  [join(HOME, "Library", "Java", "JavaVirtualMachines"), "Contents/Home"],
-];
+const JDK_GLOBS = jdkLocations(enginesDir());
 
 function children(dir: string): readonly string[] {
   try {
@@ -56,7 +49,7 @@ function newestFirst(a: string, b: string): number {
 }
 
 function ghidraHomes(parent: string): readonly string[] {
-  return children(parent).flatMap((dir) => [dir, ...children(dir)]).filter((dir) => /ghidra_[\d.]+_PUBLIC$/i.test(dir) && existsSync(join(dir, "support", "analyzeHeadless")));
+  return children(parent).flatMap((dir) => [dir, ...children(dir)]).filter((dir) => /ghidra_[\d.]+_PUBLIC$/i.test(dir) && existsSync(join(dir, "support", ANALYZE_HEADLESS)));
 }
 
 function findGhidra(): string | null {
@@ -64,8 +57,8 @@ function findGhidra(): string | null {
 }
 
 function findJdk(): string | null {
-  const homes = JDK_GLOBS.flatMap(([parent, suffix]) => children(parent).map((dir) => join(dir, suffix)));
-  return homes.filter((home) => existsSync(join(home, "bin", "java"))).sort(newestFirst)[0] ?? null;
+  const homes = JDK_GLOBS.flatMap(([parent, suffix]) => children(parent).map((dir) => (suffix ? join(dir, suffix) : dir)));
+  return homes.filter((home) => existsSync(join(home, "bin", exe("java")))).sort(newestFirst)[0] ?? null;
 }
 
 /** Bun formats dates in UTC unless TZ is set, so take the Mac's own zone from /etc/localtime. */
@@ -77,18 +70,33 @@ function localZone(): string | null {
   }
 }
 
-const BUNDLED_NODE = join(dirname(process.execPath), "..", "Resources", "node", "bin", "node");
+const RESOURCES = join(dirname(process.execPath), "..", "Resources");
 
-const RIZINS = [join(dirname(process.execPath), "..", "Resources", "rizin", "bin", "rizin"), "/opt/homebrew/bin/rizin", "/usr/local/bin/rizin"] as const;
+const BUNDLED_NODE = [join(RESOURCES, "node", "bin", exe("node")), join(RESOURCES, "node", exe("node"))].find((path) => existsSync(path)) ?? "";
+
+const RIZINS = [join(RESOURCES, "rizin", "bin", exe("rizin")), "/opt/homebrew/bin/rizin", "/usr/local/bin/rizin", "/usr/bin/rizin"] as const;
 
 /** The Rizin inside Eleven.app, else one already on this Mac. */
 function findRizin(): string | null {
   return RIZINS.find((path) => existsSync(path)) ?? null;
 }
 
+const BUNDLED_NPX = [join(RESOURCES, "node", "lib", "node_modules", "npm", "bin", "npx-cli.js"), join(RESOURCES, "node", "node_modules", "npm", "bin", "npx-cli.js")].find((path) => existsSync(path)) ?? "";
+
+/** How to run npx: the user's own, else the npm that ships inside Eleven, so npx agents start with nothing installed. */
+export function npxCommand(): { readonly command: string; readonly args: readonly string[] } {
+  const own = findOnPathOf(OS === "windows" ? "npx.cmd" : "npx");
+  if (own || !BUNDLED_NPX) return { command: own ?? "npx", args: [] };
+  return { command: nodeCommand(), args: [BUNDLED_NPX] };
+}
+
+function findOnPathOf(name: string): string | null {
+  return (process.env.PATH ?? "").split(delimiter).filter(Boolean).map((dir) => join(dir, name)).find((path) => existsSync(path)) ?? null;
+}
+
 /** The Node that runs REA: the one inside Eleven.app when it ships one, otherwise the user's. */
 export function nodeCommand(): string {
-  return existsSync(BUNDLED_NODE) ? BUNDLED_NODE : "node";
+  return BUNDLED_NODE || "node";
 }
 
 const MIN_REA_MAJOR = 6;
@@ -162,6 +170,7 @@ export function adoptToolchain(): void {
   setEnv("ELEVEN_RIZIN", settings.rizinPath || INHERITED.ELEVEN_RIZIN || findRizin());
   setEnv("ELEVEN_LLDB_DAP", settings.lldbDap || INHERITED.ELEVEN_LLDB_DAP);
   setEnv("ELEVEN_EXPORT_DIR", settings.exportDir || INHERITED.ELEVEN_EXPORT_DIR);
+  if (BUNDLED_NODE && !(process.env.PATH ?? "").includes(dirname(BUNDLED_NODE))) process.env.PATH = [process.env.PATH, dirname(BUNDLED_NODE)].filter(Boolean).join(delimiter);
 }
 
 const INHERITED: Readonly<Record<string, string | undefined>> = { ...process.env };

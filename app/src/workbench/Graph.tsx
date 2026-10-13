@@ -17,6 +17,7 @@ import { HOVER, IconButton, useBench } from "./parts";
 import { type Camera, centerOn, fitCamera, panBy, type Size, visibleRect, zoomAt } from "./camera";
 import { highlightedWord } from "./CodeLines";
 import { splitWords, type Subject, type Token, wordAddress } from "./subject";
+import { MOD } from "../lib/platform";
 
 const PADDING = 24;
 const FONT_SIZE = 11.5;
@@ -171,11 +172,11 @@ function GraphTools({ fn, layout, blocks, zoom, onZoom, onFit, onPinch }: {
       {picks.length > 0 && <div style={{ fontSize: 12, color: p.muted }}>{`${picks.length} picked · Shift-click to add`}</div>}
       {picks.length > 1 && <Button label={`Group ${picks.length} blocks`} tone="primary" size="small" onClick={() => groupBlocks(bench, fn, picks)} />}
       <div role="group" aria-label="Zoom" style={{ display: "flex", alignItems: "center", gap: 2, padding: 2, borderWidth: 1, borderColor: p.line2, borderRadius: 8, backgroundColor: p.raised }}>
-        <IconButton icon="zoom-out" label="Zoom out (⌘ and scroll)" size={24} iconSize={13} radius={6} onClick={() => onZoom(1 / ZOOM_STEP)} />
+        <IconButton icon="zoom-out" label={`Zoom out (${MOD.replace("+", "")} and scroll)`} size={24} iconSize={13} radius={6} onClick={() => onZoom(1 / ZOOM_STEP)} />
         <Tooltip label="Fit the whole graph">
           <div onClick={onFit} role="button" aria-label="Fit the whole graph" style={{ minWidth: 40, textAlign: "center", fontSize: 12, color: p.text3, cursor: "pointer", hover: HOVER }}>{`${Math.round(zoom * 100)}%`}</div>
         </Tooltip>
-        <IconButton icon="zoom-in" label="Zoom in (⌘ and scroll)" size={24} iconSize={13} radius={6} onClick={() => onZoom(ZOOM_STEP)} />
+        <IconButton icon="zoom-in" label={`Zoom in (${MOD.replace("+", "")} and scroll)`} size={24} iconSize={13} radius={6} onClick={() => onZoom(ZOOM_STEP)} />
       </div>
       <Button label="Export PDF" tone="outline" size="small" icon="external" onClick={exportPdf} />
     </div>

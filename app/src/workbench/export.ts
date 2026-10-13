@@ -1,26 +1,24 @@
-import { execFile } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
 import { currentSettings, pathSetting } from "../settings/store";
 
 import { isRecord, stringField } from "../lib/guards";
 import { rea } from "../engine/rea";
 import type { Program } from "./model";
+import { openExternal, reveal } from "../lib/platform";
 
 export type ObjcEntry = { readonly address: string; readonly name: string };
 
-const run = promisify(execFile);
 function exportDir(): string {
   return pathSetting("exportDir", "ELEVEN_EXPORT_DIR") ?? join(homedir(), "Downloads", "Eleven");
 }
 
-/** Opens this program's exports folder in Finder, making it first if nothing was exported yet. */
+/** Opens this program's exports folder in the file manager, making it first if nothing was exported yet. */
 export async function openExportsFolder(program: Program): Promise<void> {
   const dir = join(exportDir(), safe(program.name));
   await mkdir(dir, { recursive: true });
-  await run("open", [dir]);
+  openExternal(dir);
 }
 
 function safe(name: string): string {
@@ -32,7 +30,7 @@ async function write(program: Program, file: string, body: string): Promise<stri
   await mkdir(dir, { recursive: true });
   const path = join(dir, file);
   await writeFile(path, body);
-  if (currentSettings().revealExports && !pathSetting("exportDir", "ELEVEN_EXPORT_DIR")) await run("open", ["-R", path]).catch(() => undefined);
+  if (currentSettings().revealExports && !pathSetting("exportDir", "ELEVEN_EXPORT_DIR")) reveal(path);
   return path;
 }
 

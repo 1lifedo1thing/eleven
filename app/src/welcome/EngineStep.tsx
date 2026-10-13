@@ -9,13 +9,14 @@ import { type Engine, type EngineId, engineNamed, ENGINES, engineReady, rowState
 import { glass, HOVER, lineHeight } from "./look";
 import { Note, OutlineButton, Panel, Percent, Progress, ReadyMark, StepHeading, TextButton } from "./SetupParts";
 import type { Engines } from "./useEngines";
+import { THIS_DEVICE } from "../lib/platform";
 
 function rowDetail(engine: Engine, engines: Engines): string {
   const install = engines.installs[engine.id];
   const found = engines.found[engine.id];
   switch (rowState(found, install)) {
     case "ready":
-      return install.phase === "done" ? "Installed" : `Found on this Mac, ${found?.where ?? ""}`;
+      return install.phase === "done" ? "Installed" : `Found on ${THIS_DEVICE}, ${found?.where ?? ""}`;
     case "missing":
       return `${engine.about}, ${engine.megabytes} MB`;
     case "failed":
@@ -120,7 +121,7 @@ export function EngineStep({ engines }: { readonly engines: Engines }): ReactEle
         {ENGINES.map((engine) => <Row key={engine.id} engine={engine} engines={engines} />)}
         <BundledRow />
       </Panel>
-      <Note text="Rizin is enough to start. Add Ghidra any time for deeper analysis. Everything installs inside Eleven's own folder, so nothing else on your Mac changes." />
+      <Note text="Rizin comes with Eleven, so files open right away. Java and Ghidra download by themselves for deeper analysis, inside Eleven's own folder, so nothing else on your computer changes." />
     </>
   );
 }

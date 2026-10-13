@@ -1,16 +1,16 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
 import { readCachedText } from "../agents/launch";
 import { isRecord, recordField, stringField } from "../lib/guards";
 import { rea } from "./rea";
+import { cacheRoot } from "../lib/platform";
 
 export type ProcedureKind = "Function" | "Thunk" | "External";
 
 export type Procedure = { readonly address: string; readonly name: string; readonly kind: ProcedureKind };
 
-export const CACHE = join(homedir(), "Library", "Caches", "eleven");
+export const CACHE = cacheRoot();
 
 function kindOf(value: unknown): ProcedureKind | null {
   return value === "Function" || value === "Thunk" || value === "External" ? value : null;

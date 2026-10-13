@@ -18,6 +18,7 @@ import { showInFinder } from "../settings/system";
 import { useDropTarget } from "../Shell";
 import { useTheme } from "../theme";
 import { ago } from "../welcome/files";
+import { FILE_MANAGER } from "../lib/platform";
 
 const HOVER = { opacity: 0.72 } as const;
 const CARD_MIN = 220;
@@ -111,7 +112,7 @@ function ProjectCard({ entry, current, chats, onOpen, onChanged, onProblem }: {
     if (to) copyFileSync(file, to);
   };
   const groups: readonly (readonly MenuItem[])[] = [
-    [{ label: "Open", icon: "open-tab", run: onOpen }, { label: "Show in Finder", icon: "folder", run: () => showInFinder(file ?? entry.original) }],
+    [{ label: "Open", icon: "open-tab", run: onOpen }, { label: `Show in ${FILE_MANAGER}`, icon: "folder", run: () => showInFinder(file ?? entry.original) }],
     [{ label: "Save a copy…", icon: "copy", run: () => void saveCopy() }, { label: "Rename", icon: "rename", run: () => setRenaming(entry.name) }],
     [
       { label: "Remove from list", icon: "close", run: () => { forgetProject(entry.id); onChanged(); } },

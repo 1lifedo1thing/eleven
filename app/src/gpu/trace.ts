@@ -3,17 +3,17 @@ import { readdirSync } from "node:fs";
 
 import { currentSettings } from "../settings/store";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { promisify } from "node:util";
 
 import { isRecord } from "../lib/guards";
 import type { Lane, Recording, Span } from "./types";
 import { parseXml, tableRows, type XmlNode } from "./xml";
+import { cacheRoot } from "../lib/platform";
 
 const run = promisify(execFile);
 /** Where GPU recordings are kept, so Settings can size and clear them. */
-export const RECORDINGS_DIR = join(homedir(), "Library", "Caches", "eleven", "recordings");
+export const RECORDINGS_DIR = join(cacheRoot(), "recordings");
 const RECORDINGS = RECORDINGS_DIR;
 
 function skipFrames(): number {

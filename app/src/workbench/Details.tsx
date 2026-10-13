@@ -14,6 +14,7 @@ import { TYPING } from "../lib/shortcuts";
 import { TerminalView } from "../terminal/TerminalView";
 import { dirname } from "node:path";
 import { showAddress } from "../settings/look";
+import { MOD } from "../lib/platform";
 
 function RefRow({ addr, at }: { readonly addr: string; readonly at: string }): ReactElement {
   const { p } = useTheme();
@@ -105,7 +106,7 @@ export function Patches(): ReactElement {
     })();
   };
   if (patches.length === 0) {
-    return <div style={{ marginTop: 4, color: p.muted }}>No patches yet. Open a function, then pick "Patch bytes here" in ⌘K.</div>;
+    return <div style={{ marginTop: 4, color: p.muted }}>{`No patches yet. Open a function, then pick "Patch bytes here" in ${MOD}K.`}</div>;
   }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
