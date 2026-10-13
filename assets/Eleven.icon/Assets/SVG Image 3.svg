@@ -1,0 +1,19 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g opacity="0.36">
+<path d="M115 130V896M215 100V932M313 90V944M412 90V944M512 72V962M612 90V944M711 90V944M809 100V932M909 130V896" stroke="white"/>
+<path d="M82 160H942M82 259H942M82 357H942M82 456H942M65 512H959M82 611H942M82 710H942M82 809H942M82 908H942" stroke="white"/>
+</g>
+<path opacity="0.84" d="M512 854C700.881 854 854 700.881 854 512C854 323.119 700.881 170 512 170C323.119 170 170 323.119 170 512C170 700.881 323.119 854 512 854Z" stroke="white" stroke-width="1.6"/>
+<g opacity="0.43">
+<path d="M512 126V898M124 512H900" stroke="white"/>
+<path opacity="0.26" d="M132 132L892 892M892 132L132 892" stroke="white"/>
+</g>
+<path opacity="0.85" d="M116 258H908L512 910L116 258Z" stroke="white" stroke-width="3.2" stroke-linejoin="round"/>
+<g opacity="0.73">
+<path d="M116 512H908M116 710H908M215 258V910M809 258V910" stroke="white" stroke-width="1.6"/>
+</g>
+<g opacity="0.92">
+<path d="M116 249V267M107 258H125M908 249V267M899 258H917M512 161V179M503 170H521M512 901V919M503 910H521" stroke="white" stroke-width="2.6" stroke-linecap="square"/>
+<path d="M215 503V521M206 512H224M809 503V521M800 512H818M215 800V818M206 809H224M809 800V818M800 809H818" stroke="white" stroke-width="2.6" stroke-linecap="square"/>
+</g>
+</svg>

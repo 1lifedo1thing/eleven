@@ -1,0 +1,103 @@
+import { execFileSync } from "node:child_process";
+import { existsSync, readdirSync, statSync } from "node:fs";
+import { basename, join } from "node:path";
+
+import { prepareTarget, type Target } from "../engine/target";
+import { findLoaders } from "./loaders";
+import { listRuns, readGpuRun, recordGpuRun, runTitle } from "./trace";
+import { readMetalLibrary } from "./metal";
+import { MODEL_FILE, readModel } from "./models";
+import type { LoadedBy, ModelInfo, Recording, ShaderLibrary } from "./types";
+import type { GpuSource } from "./source";
+
+const MAX_FILES = 40;
+const MAX_DEPTH = 6;
+
+function appRoot(path: string): string | null {
+  const at = path.indexOf(".app/");
+  if (at >= 0) return path.slice(0, at + 4);
+  return path.endsWith(".app") ? path : null;
+}
+
+export function bundleExecutable(app: string): string | null {
+  try {
+    const name = execFileSync("plutil", ["-extract", "CFBundleExecutable", "raw", join(app, "Contents", "Info.plist")], { encoding: "utf8" }).trim();
+    const path = join(app, "Contents", "MacOS", name);
+    return existsSync(path) ? path : null;
+  } catch {
+    return null;
+  }
+}
+
+function scan(dir: string, depth: number, found: string[]): void {
+  if (depth > MAX_DEPTH || found.length >= MAX_FILES) return;
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (/\.metallib$/i.test(entry.name) || MODEL_FILE.test(entry.name)) found.push(path);
+    else if (entry.isDirectory() && !entry.isSymbolicLink()) scan(path, depth + 1, found);
+    if (found.length >= MAX_FILES) return;
+  }
+}
+
+function objcName(name: string): string {
+  const [owner, method] = name.split("::");
+  return method ? `-[${owner} ${method}]` : name;
+}
+
+/** The GPU screen backed by the real files: Apple's metal-objdump, Eleven's model readers and REA for callers. */
+export class LiveSource implements GpuSource {
+  readonly live = true;
+  private readonly app: string | null;
+  private readonly files: readonly string[];
+
+  constructor(private readonly target: Target) {
+    this.app = appRoot(target.original);
+    const found: string[] = [];
+    if (this.app) scan(join(this.app, "Contents"), 0, found);
+    this.files = found.length > 0 ? found : [target.original];
+  }
+
+  executable(): Promise<string> {
+    const exe = this.app ? bundleExecutable(this.app) : null;
+    return Promise.resolve(exe ? basename(exe) : this.target.name);
+  }
+
+  async listLibraries(): Promise<readonly ShaderLibrary[]> {
+    return Promise.all(this.files.filter((file) => /\.metallib$/i.test(file)).map(readMetalLibrary));
+  }
+
+  async functionIr(library: string, name: string): Promise<string> {
+    const lib = (await this.listLibraries()).find((l) => l.name === library);
+    const fn = lib?.functions.find((f) => f.name === name);
+    if (!fn) throw new Error(`${library} has no function named ${name}.`);
+    return fn.ir;
+  }
+
+  async loadedBy(_library: string, name: string): Promise<LoadedBy | null> {
+    const exe = this.app ? bundleExecutable(this.app) : null;
+    if (!exe) return null;
+    const loaders = await findLoaders(prepareTarget(exe).path, name);
+    const first = loaders[0];
+    if (!first) return null;
+    const others = loaders.length > 1 ? ` Also loaded in ${loaders.length - 1} other place${loaders.length > 2 ? "s" : ""}.` : "";
+    return { symbol: objcName(first.name), note: `Looks it up by name: "${name}".${others}` };
+  }
+
+  async listModels(): Promise<readonly ModelInfo[]> {
+    const models = this.files.filter((file) => MODEL_FILE.test(file) && (statSync(file).isFile() || /\.mlmodelc$/i.test(file)));
+    return Promise.all(models.map(readModel));
+  }
+
+  async listRecordings(): Promise<readonly Recording[]> {
+    const exe = this.app ? bundleExecutable(this.app) : null;
+    if (!exe) return [];
+    const runs = await Promise.all(listRuns(basename(exe)).map(async (trace) => (await readGpuRun(trace, runTitle(trace))).recording));
+    return runs;
+  }
+
+  async record(): Promise<void> {
+    const exe = this.app ? bundleExecutable(this.app) : null;
+    if (!exe) throw new Error("Only apps can be recorded. Open the .app, not a file inside it.");
+    await recordGpuRun(exe, []);
+  }
+}

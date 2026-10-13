@@ -1,0 +1,138 @@
+import { execFile } from "node:child_process";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { promisify } from "node:util";
+
+import { reaLaunch } from "../engine/rea";
+import { enginesDir } from "../engine/toolchain";
+
+const run = promisify(execFile);
+const HOME = homedir();
+const MIN_JAVA = 21;
+
+export type CheckStatus = "checking" | "ok" | "info" | "problem";
+
+export type Check = { readonly key: string; readonly status: CheckStatus; readonly title: string; readonly detail: string };
+
+const GHIDRA_PARENTS = [enginesDir(), join(HOME, ".local", "share"), join(HOME, "Applications"), HOME, "/Applications", "/opt", "/opt/homebrew/Caskroom/ghidra", "/usr/local/Caskroom/ghidra"] as const;
+
+const JDK_HOMES: readonly (readonly [parent: string, suffix: string])[] = [
+  [enginesDir(), "Contents/Home"],
+  ["/Library/Java/JavaVirtualMachines", "Contents/Home"],
+  ["/opt/homebrew/Cellar/openjdk@21", "libexec/openjdk.jdk/Contents/Home"],
+  ["/opt/homebrew/Cellar/openjdk", "libexec/openjdk.jdk/Contents/Home"],
+  ["/usr/local/Cellar/openjdk", "libexec/openjdk.jdk/Contents/Home"],
+  ["/opt/zerobrew/prefix/Cellar/openjdk", "libexec/openjdk.jdk/Contents/Home"],
+  [join(HOME, "Library", "Java", "JavaVirtualMachines"), "Contents/Home"],
+];
+
+export const PENDING: readonly Check[] = [
+  { key: "ghidra", status: "checking", title: "Ghidra", detail: "Looking on this Mac" },
+  { key: "java", status: "checking", title: "Java", detail: "Looking on this Mac" },
+  { key: "rea", status: "checking", title: "REA", detail: "Looking on this Mac" },
+  cacheCheck(),
+];
+
+function children(dir: string): readonly string[] {
+  try {
+    return readdirSync(dir).map((name) => join(dir, name));
+  } catch {
+    return [];
+  }
+}
+
+function versionOf(path: string): readonly number[] {
+  return (path.match(/\d+(\.\d+)*/g)?.at(-1) ?? "0").split(".").map(Number);
+}
+
+function newestFirst(a: string, b: string): number {
+  const [x, y] = [versionOf(a), versionOf(b)];
+  for (let ix = 0; ix < Math.max(x.length, y.length); ix++) {
+    const diff = (y[ix] ?? 0) - (x[ix] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
+function tildify(path: string): string {
+  return path.startsWith(`${HOME}/`) ? `~${path.slice(HOME.length)}` : path;
+}
+
+export function ghidraHome(): string | null {
+  const fromEnv = process.env.GHIDRA_INSTALL_DIR;
+  if (fromEnv && existsSync(join(fromEnv, "support", "analyzeHeadless"))) return fromEnv;
+  const homes = GHIDRA_PARENTS.flatMap((parent) => children(parent).flatMap((dir) => [dir, ...children(dir)]));
+  return homes.filter((dir) => /ghidra_[\d.]+_PUBLIC$/i.test(dir) && existsSync(join(dir, "support", "analyzeHeadless"))).sort(newestFirst)[0] ?? null;
+}
+
+function ghidraVersion(home: string): string {
+  const fromName = home.match(/ghidra_([\d.]+)_PUBLIC/i)?.[1];
+  if (fromName) return fromName;
+  try {
+    return readFileSync(join(home, "Ghidra", "application.properties"), "utf8").match(/application\.version=(\S+)/)?.[1] ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function decompilerNote(home: string): string {
+  const os = join(home, "Ghidra", "Features", "Decompiler", "os");
+  if (existsSync(join(os, "mac_arm_64", "decompile"))) return "with an arm64 decompiler";
+  if (existsSync(join(os, "mac_x86_64", "decompile"))) return "with an Intel decompiler that runs under Rosetta";
+  return "but its decompiler is missing, so code won't show";
+}
+
+function ghidraCheck(): Check {
+  const home = ghidraHome();
+  if (!home) return { key: "ghidra", status: "problem", title: "Ghidra not found", detail: "Install Ghidra 12 or set GHIDRA_INSTALL_DIR, then restart Eleven." };
+  const version = ghidraVersion(home);
+  return { key: "ghidra", status: "ok", title: version ? `Ghidra ${version}` : "Ghidra", detail: `${tildify(home)} ${decompilerNote(home)}` };
+}
+
+export function jdkHome(): string | null {
+  const fromEnv = process.env.JAVA_HOME;
+  if (fromEnv && existsSync(join(fromEnv, "bin", "java"))) return fromEnv;
+  const homes = JDK_HOMES.flatMap(([parent, suffix]) => children(parent).map((dir) => join(dir, suffix)));
+  return homes.filter((home) => existsSync(join(home, "bin", "java"))).sort(newestFirst)[0] ?? null;
+}
+
+function javaMajor(home: string): number | null {
+  try {
+    const version = readFileSync(join(home, "release"), "utf8").match(/JAVA_VERSION="([^"]+)"/)?.[1] ?? "";
+    const [first, second] = version.split(".").map(Number);
+    const major = first === 1 ? second : first;
+    return major !== undefined && Number.isFinite(major) ? major : null;
+  } catch {
+    return null;
+  }
+}
+
+export function javaCheck(): Check {
+  const home = jdkHome();
+  if (!home) return { key: "java", status: "problem", title: "Java not found", detail: `Install a JDK ${MIN_JAVA} or newer, then restart Eleven.` };
+  const major = javaMajor(home);
+  const title = major === null ? "Java" : `Java ${major}`;
+  if (major !== null && major < MIN_JAVA) return { key: "java", status: "problem", title, detail: `Ghidra needs Java ${MIN_JAVA} or newer. Install a newer JDK, then restart Eleven.` };
+  if (!existsSync(join(home, "bin", "javac"))) return { key: "java", status: "problem", title, detail: "Only a Java runtime was found. Ghidra needs the full JDK." };
+  return { key: "java", status: "ok", title, detail: "Full JDK found. Eleven will ship its own later." };
+}
+
+async function reaCheck(): Promise<Check> {
+  const { command, args } = reaLaunch();
+  try {
+    const { stdout } = await run(command, [...args.filter((arg) => arg !== "mcp"), "--version"], { timeout: 15000 });
+    const version = stdout.match(/\d+(\.\d+)+/)?.[0];
+    return { key: "rea", status: "ok", title: version ? `REA ${version}` : "REA", detail: "Analysis tools ready" };
+  } catch {
+    return { key: "rea", status: "problem", title: "REA not found", detail: "Install it with npm install -g rea-agents, then restart Eleven." };
+  }
+}
+
+function cacheCheck(): Check {
+  return { key: "cache", status: "info", title: "Cache", detail: "~/Library/Caches/eleven. Files you opened before load instantly." };
+}
+
+export async function runChecks(): Promise<readonly Check[]> {
+  return [ghidraCheck(), javaCheck(), await reaCheck(), cacheCheck()];
+}

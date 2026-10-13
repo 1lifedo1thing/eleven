@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Builds and installs rz-ghidra, the Ghidra decompiler as a rizin plugin, so the
+# Rizin engine in Eleven gives Ghidra-quality pseudocode with no JVM.
+#
+# This compiles Ghidra's C++ decompiler from source (a few minutes, a few GB of
+# memory). Run it when your machine has headroom, not while it is deep in swap.
+set -euo pipefail
+
+echo "==> build tools (rizin, meson, ninja, cmake)"
+for pkg in rizin meson ninja cmake pkg-config; do
+  brew list "$pkg" >/dev/null 2>&1 || brew install "$pkg"
+done
+
+src="${TMPDIR:-/tmp}/rz-ghidra-src"
+rm -rf "$src"
+echo "==> clone rizinorg/rz-ghidra"
+git clone --depth 1 --recursive https://github.com/rizinorg/rz-ghidra "$src"
+
+echo "==> configure + build (this is the long part)"
+meson setup "$src/build" "$src"
+ninja -C "$src/build"
+
+echo "==> install the plugin"
+ninja -C "$src/build" install
+
+echo "==> verify: rizin should now list the pdg decompiler"
+probe="$(command -v rizin)"
+if rizin -qc "Lc" "$probe" 2>/dev/null | grep -q "pdg"; then
+  echo "rz-ghidra installed. The Rizin engine in Eleven now decompiles to pseudocode (pdg)."
+else
+  echo "Built, but rizin did not report pdg. Check the plugin dir: rizin -H RZ_LIBR_PLUGINS" >&2
+  exit 1
+fi

@@ -1,0 +1,28 @@
+{
+  "name": "eleven-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --hot src/main.tsx",
+    "start": "bun src/main.tsx",
+    "typecheck": "tsc --noEmit",
+    "bundle": "script/bundle-macos"
+  },
+  "dependencies": {
+    "@agentclientprotocol/sdk": "^1.8.0",
+    "@gpuix/native": "0.10.0",
+    "@gpuix/react": "0.10.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "@xterm/headless": "^6.0.0",
+    "react": "19.3.0",
+    "zod": "4.6.6"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.3",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "typescript": "^7.0.2"
+  },
+  "version": "0.1.0",
+  "license": "Apache-2.0"
+}

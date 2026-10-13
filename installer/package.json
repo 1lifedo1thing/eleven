@@ -1,0 +1,12 @@
+{
+  "name": "eleven-app",
+  "version": "0.1.0",
+  "description": "Installs Eleven, the agent-first reverse-engineering app for macOS.",
+  "license": "Apache-2.0",
+  "bin": { "eleven-app": "bin/eleven-app.mjs" },
+  "files": ["bin"],
+  "os": ["darwin"],
+  "engines": { "node": ">=18" },
+  "repository": { "type": "git", "url": "git+https://github.com/Zfinix/eleven.git" },
+  "homepage": "https://github.com/Zfinix/eleven"
+}

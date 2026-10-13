@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Runs the deterministic test files one at a time. Each file spawns its own
+# Ghidra JVM through REA; running them in parallel thrashes the machine and
+# times out, since Ghidra is heavy and its provider is one-at-a-time.
+set -uo pipefail
+cd "$(dirname "$0")/.."
+
+# Give the tests their own data folder so they never touch real Eleven data.
+export ELEVEN_SUPPORT="$(mktemp -d)/eleven"
+trap 'rm -rf "$(dirname "$ELEVEN_SUPPORT")"' EXIT
+
+files=$(ls tests/*.test.ts* | grep -v '\.live\.')
+failed=0
+for file in $files; do
+  echo "== $file"
+  if ! bun test "$file"; then
+    failed=1
+  fi
+done
+
+if [ "$failed" -ne 0 ]; then
+  echo "SOME TESTS FAILED"
+  exit 1
+fi
+echo "ALL TESTS PASSED"

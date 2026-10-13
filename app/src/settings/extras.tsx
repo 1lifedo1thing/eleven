@@ -1,0 +1,127 @@
+import type { ReactElement } from "react";
+
+import { type Appearance, MONO, useTheme } from "../theme";
+import { codeFamily, formatAddress, lineHeightFor, type Syntax, syntaxFor } from "./look";
+import { PERMISSION_PRESETS, PERMISSION_TOOLS, type PermissionTable, type Settings } from "./store";
+
+type Part = readonly [string, keyof Syntax | ""];
+
+const CODE: readonly (readonly Part[])[] = [
+  [["int ", "kind"], ["check_license", "call"], ["(", ""], ["char", "kind"], [" *key) {", ""]],
+  [["  ", ""], ["size_t", "kind"], [" len = ", ""], ["strlen", "call"], ["(key);", ""]],
+  [["  ", ""], ["if", "keyword"], [" (len != ", ""], ["16", "number"], [") ", ""], ["return", "keyword"], [" ", ""], ["0", "number"], [";", ""]],
+  [["  ", ""], ["// the prefix every valid key starts with", "comment"]],
+  [["  ", ""], ["return", "keyword"], [" ", ""], ["verify", "call"], ["(key, ", ""], ["\"ELEVEN-\"", "string"], [");", ""]],
+  [["}", ""]],
+];
+
+export function CodePreview({ settings }: { readonly settings: Settings }): ReactElement {
+  const { p } = useTheme();
+  const syntax = syntaxFor(settings.colorScheme, p);
+  const size = settings.codeFontSize;
+  return (
+    <div aria-label="Code preview" style={{ display: "flex", flexDirection: "column", marginTop: 12, paddingTop: 12, paddingBottom: 12, borderRadius: 12, backgroundColor: p.raised, fontFamily: codeFamily(settings.codeFont), fontSize: size, lineHeight: lineHeightFor(size, settings.lineSpacing), overflowX: "scroll" }}>
+      {CODE.map((line, ix) => (
+        <div key={ix} style={{ display: "flex", paddingLeft: 16, paddingRight: 16, whiteSpace: "nowrap" }}>
+          {settings.lineNumbers && <div style={{ width: 28, flexShrink: 0, marginRight: 16, textAlign: "right", color: p.faint }}>{String(ix + 1)}</div>}
+          {line.map(([text, kind], at) => <div key={at} style={{ color: kind === "" ? p.text3 : syntax[kind] }}>{text}</div>)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const ADDRESSES = [[0x100003f2cn, "check_license", "55 48 89 e5"], [0x100003f30n, "verify", "f3 0f 1e fa"], [0x100004088n, "print_usage", "48 83 ec 18"]] as const;
+
+export function AddressPreview({ settings }: { readonly settings: Settings }): ReactElement {
+  const { p } = useTheme();
+  return (
+    <div aria-label="Address preview" style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 12, paddingTop: 12, paddingBottom: 12, paddingLeft: 16, paddingRight: 16, borderRadius: 12, backgroundColor: p.raised, fontFamily: MONO, fontSize: 12 }}>
+      {ADDRESSES.map(([address, name, bytes]) => (
+        <div key={name} style={{ display: "flex", gap: 16, whiteSpace: "nowrap" }}>
+          <div style={{ color: p.muted }}>{formatAddress(address, settings)}</div>
+          <div style={{ color: "#61afef" }}>{name}</div>
+          <div style={{ color: p.faint }}>{settings.addressUpper ? bytes.toUpperCase() : bytes}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const THEMES = [
+  { value: "Dark", label: "Dark", win: ["#171717"], card: ["#0f0f0f"], line: "#3a3a3a" },
+  { value: "Light", label: "Light", win: ["#f3f3f1"], card: ["#ffffff"], line: "#d4d4d1" },
+  { value: "System", label: "Match my Mac", win: ["#171717", "#f3f3f1"], card: ["#0f0f0f", "#ffffff"], line: "#8f8f8f" },
+] as const;
+
+function Split({ colors }: { readonly colors: readonly string[] }): ReactElement {
+  return (
+    <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", pointerEvents: "none" }}>
+      {colors.map((color) => <div key={color} style={{ flexGrow: 1, backgroundColor: color, pointerEvents: "none" }} />)}
+    </div>
+  );
+}
+
+export function ThemeCards({ value, onPick }: { readonly value: Appearance; readonly onPick: (next: Appearance) => void }): ReactElement {
+  const { p } = useTheme();
+  const bar = (width: string, color: string): ReactElement => <div style={{ height: 5, width, borderRadius: 3, backgroundColor: color, pointerEvents: "none" }} />;
+  return (
+    <div role="radiogroup" aria-label="Theme" style={{ display: "flex", gap: 12, marginBottom: 26 }}>
+      {THEMES.map((theme) => {
+        const on = theme.value === value;
+        return (
+          <div key={theme.value} onClick={() => onPick(theme.value)} role="radio" aria-label={theme.label} aria-selected={on} style={{ display: "flex", flexDirection: "column", gap: 10, flexGrow: 1, flexBasis: 0, minWidth: 0, paddingTop: 8, paddingLeft: 8, paddingRight: 8, paddingBottom: 10, borderWidth: 1.5, borderColor: on ? "transparent" : p.line2, borderRadius: 14, cursor: "pointer", hover: { opacity: 0.72 }, ...(on ? { backgroundColor: p.fill } : {}) }}>
+            <div style={{ position: "relative", display: "flex", gap: 6, height: 84, padding: 8, borderRadius: 9, overflow: "hidden", pointerEvents: "none" }}>
+              <Split colors={theme.win} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 5, width: "28%", paddingTop: 4, pointerEvents: "none" }}>
+                {bar("80%", theme.line)}
+                {bar("60%", theme.line)}
+                {bar("70%", theme.line)}
+              </div>
+              <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: 5, flexGrow: 1, padding: 8, borderRadius: 6, overflow: "hidden", pointerEvents: "none" }}>
+                <Split colors={theme.card} />
+                {bar("50%", "#c678dd")}
+                {bar("75%", theme.line)}
+                {bar("40%", "#98c379")}
+              </div>
+            </div>
+            <div style={{ paddingLeft: 4, paddingRight: 4, fontWeight: 500, color: p.text }}>{theme.label}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+type PresetId = keyof typeof PERMISSION_PRESETS;
+
+const PRESETS: readonly { readonly id: PresetId; readonly title: string; readonly desc: string }[] = [
+  { id: "careful", title: "Ask about everything", desc: "Agents ask before reading the file or changing anything. Slowest, most control." },
+  { id: "balanced", title: "Ask before changes", desc: "Agents read and move around freely, and ask before they change or run anything." },
+  { id: "free", title: "Let agents work", desc: "Agents rename, take notes and run the app on their own. They still ask before patching or using your terminal." },
+];
+
+function sameTable(a: PermissionTable, b: PermissionTable): boolean {
+  return PERMISSION_TOOLS.every((tool) => a[tool] === b[tool]);
+}
+
+export function PresetCards({ table, onPick }: { readonly table: PermissionTable; readonly onPick: (next: PermissionTable) => void }): ReactElement {
+  const { p } = useTheme();
+  return (
+    <div role="radiogroup" aria-label="How much agents can do" style={{ display: "flex", gap: 12, marginBottom: 26 }}>
+      {PRESETS.map((preset) => {
+        const on = sameTable(table, PERMISSION_PRESETS[preset.id]);
+        return (
+          <div key={preset.id} onClick={() => onPick(PERMISSION_PRESETS[preset.id])} role="radio" aria-label={preset.title} aria-selected={on} style={{ display: "flex", flexDirection: "column", gap: 6, flexGrow: 1, flexBasis: 0, minWidth: 0, padding: 14, borderWidth: 1.5, borderColor: on ? "transparent" : p.line2, borderRadius: 14, cursor: "pointer", hover: { opacity: 0.72 }, ...(on ? { backgroundColor: p.fill } : {}) }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, pointerEvents: "none" }}>
+              <div style={{ width: 14, height: 14, borderRadius: 7, flexShrink: 0, borderWidth: on ? 4 : 1.5, borderColor: on ? p.text : p.line3 }} />
+              <div style={{ fontWeight: 600, color: p.text }}>{preset.title}</div>
+            </div>
+            <div style={{ color: p.muted, fontSize: 12.5, pointerEvents: "none" }}>{preset.desc}</div>
+            {preset.id === "balanced" && <div style={{ display: "flex", alignSelf: "flex-start", alignItems: "center", height: 20, paddingLeft: 8, paddingRight: 8, borderRadius: 10, backgroundColor: p.fill2, color: p.text4, fontSize: 11.5, pointerEvents: "none" }}>Recommended</div>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}

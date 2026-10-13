@@ -1,0 +1,147 @@
+import { execFileSync } from "node:child_process";
+import type { GpuixTheme } from "@gpuix/react";
+import { createContext, useContext } from "react";
+
+import type { CodeLook, Syntax } from "./settings/look";
+
+export const SANS = ".SystemUIFont";
+export const MONO = "JetBrains Mono";
+
+/** Line height for a code font size: tight enough to read dense disassembly. */
+export function codeLineHeight(size: number): number {
+  return Math.round(size * 1.5);
+}
+
+export type Appearance = "Dark" | "Light" | "System";
+
+export const DARK = {
+  win: "#171717",
+  glass: "rgba(23,23,23,0.78)",
+  glassTile: "rgba(255,255,255,0.07)",
+  card: "#0f0f0f",
+  deep: "#0b0b0b",
+  deep2: "#0d0d0d",
+  raised: "#141414",
+  raised2: "#1c1c1c",
+  fill: "#1f1f1f",
+  fill2: "#222222",
+  sel: "#262626",
+  sel2: "#2e2e2e",
+  line2: "#2a2a2a",
+  line3: "#3a3a3a",
+  text: "#ededed",
+  text2: "#dcdcdc",
+  text3: "#c8c8c8",
+  text4: "#a8a8a8",
+  muted: "#8f8f8f",
+  faint: "#6b6b6b",
+  gutter: "#4a4a4a",
+  primary: "#ededed",
+  onPrimary: "#0a0a0a",
+  link: "#73ade9",
+  keyword: "#c678dd",
+  string: "#98c379",
+  number: "#d19a66",
+  kind: "#56b6c2",
+  call: "#61afef",
+  data: "#e5c07b",
+  error: "#e06c75",
+  comment: "#5c6370",
+  warnBg: "#15130d",
+  warnLine: "#3d3522",
+  onWarn: "#1a1406",
+  errBg: "#160f10",
+  errLine: "#3d2226",
+  ring: "rgba(255,255,255,0.08)",
+  icon: "icon-dark.png",
+};
+
+export type Palette = typeof DARK;
+
+export const LIGHT: Palette = {
+  win: "#f3f3f1",
+  glass: "rgba(243,243,241,0.74)",
+  glassTile: "rgba(0,0,0,0.05)",
+  card: "#ffffff",
+  deep: "#f6f6f5",
+  deep2: "#fafaf9",
+  raised: "#f7f7f6",
+  raised2: "#f1f1ef",
+  fill: "#ececea",
+  fill2: "#e9e9e7",
+  sel: "#e6e6e4",
+  sel2: "#dfdfdc",
+  line2: "#dededb",
+  line3: "#cbcbc8",
+  text: "#171717",
+  text2: "#262626",
+  text3: "#3a3a3a",
+  text4: "#525252",
+  muted: "#6b6b6b",
+  faint: "#8f8f8f",
+  gutter: "#b8b8b8",
+  primary: "#171717",
+  onPrimary: "#ffffff",
+  link: "#2f6fd0",
+  keyword: "#a626a4",
+  string: "#50a14f",
+  number: "#986801",
+  kind: "#0184bc",
+  call: "#4078f2",
+  data: "#c18401",
+  error: "#e45649",
+  comment: "#a0a1a7",
+  warnBg: "#fff8e6",
+  warnLine: "#efd9a6",
+  onWarn: "#1a1406",
+  errBg: "#fdeeee",
+  errLine: "#f1c6ca",
+  ring: "rgba(0,0,0,0.08)",
+  icon: "icon-light.png",
+};
+
+let systemDark: boolean | null = null;
+
+/** Asked once: spawning `defaults` blocks the frame loop, and App renders on every chat update. */
+export function systemIsDark(): boolean {
+  if (systemDark !== null) return systemDark;
+  try {
+    systemDark = execFileSync("defaults", ["read", "-g", "AppleInterfaceStyle"], { encoding: "utf8", stdio: "pipe" }).trim() === "Dark";
+  } catch {
+    systemDark = false;
+  }
+  return systemDark;
+}
+
+export function paletteFor(appearance: Appearance): Palette {
+  const dark = appearance === "Dark" || (appearance === "System" && systemIsDark());
+  return dark ? DARK : LIGHT;
+}
+
+export const ThemeContext = createContext<{
+  p: Palette;
+  appearance: Appearance;
+  setAppearance: (appearance: Appearance) => void;
+}>({ p: DARK, appearance: "Dark", setAppearance: () => {} });
+
+export const useTheme = () => useContext(ThemeContext);
+
+/** Palette mapped onto GPUIX's native markdown and code components. */
+export function nativeTheme(p: Palette, look: Pick<CodeLook, "family" | "size" | "lineHeight">, syntax: Syntax): GpuixTheme {
+  return {
+    appearance: p === DARK ? "dark" : "light",
+    bg: p.card,
+    border: p.line2,
+    text: p.text2,
+    textMuted: p.muted,
+    textFaint: p.faint,
+    accent: p.link,
+    caret: p.text,
+    codeText: p.text3,
+    codeWash: p.fill,
+    fontSans: SANS,
+    fontMono: look.family,
+    syntax: { comment: syntax.comment, keyword: syntax.keyword, string: syntax.string, number: syntax.number, boolean: syntax.number, typeName: syntax.kind, constructor: syntax.kind, function: syntax.call, constant: p.data, property: p.error },
+    metrics: { mdTextSize: 13.5, mdLineHeight: 21, mdBlockGap: 10, mdHeadingSizes: [18, 16, 14.5, 13.5], mdCodeRadius: 8, mdInlineCodeRadius: 4, codeTextSize: look.size, codeLineHeight: look.lineHeight, mdCodeHeaderTextSize: look.size },
+  };
+}

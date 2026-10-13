@@ -1,0 +1,198 @@
+import { execFile } from "node:child_process";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { dirname, join, relative } from "node:path";
+import { promisify } from "node:util";
+
+import { deleteThread, listThreads, loadThread, renameThread, saveThread, type SavedThread } from "../chat/history";
+import { isRecord } from "../lib/guards";
+import { supportPath } from "../lib/support";
+import { pathSetting } from "../settings/store";
+import { appVersion } from "../settings/system";
+import { type Manifest, openElevenFile, pack, type Part, sha256, writeAtomic } from "./elevenFile";
+import { projectJson, restoreProjectJson } from "./project";
+import type { Target } from "./target";
+
+function cacheRoot(): string {
+  return pathSetting("cacheDir", "ELEVEN_CACHE") ?? join(homedir(), "Library", "Caches", "eleven");
+}
+const DOCUMENTS = supportPath("documents.json");
+const EXTENSION = ".eleven";
+const run = promisify(execFile);
+
+/** Binaries rarely change and level 19 is slow, so each one is compressed once per run. */
+const packedBinaries = new Map<string, { readonly raw: Uint8Array; readonly packed: Uint8Array }>();
+
+export function isElevenFile(path: string): boolean {
+  return path.toLowerCase().endsWith(EXTENSION);
+}
+
+function documents(): Record<string, string> {
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(DOCUMENTS, "utf8"));
+    if (!isRecord(parsed)) return {};
+    return Object.fromEntries(Object.entries(parsed).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
+  } catch {
+    return {};
+  }
+}
+
+/** Where a project was last saved as a `.eleven` file, if it ever was and the file is still there. */
+export function documentPath(id: string): string | null {
+  const path = documents()[id];
+  return path && existsSync(path) ? path : null;
+}
+
+export function setDocumentPath(id: string, path: string): void {
+  mkdirSync(dirname(DOCUMENTS), { recursive: true });
+  writeFileSync(DOCUMENTS, `${JSON.stringify({ ...documents(), [id]: path }, null, 2)}\n`);
+}
+
+function cacheFiles(id: string): Record<string, string> {
+  const root = join(cacheRoot(), id);
+  const out: Record<string, string> = {};
+  const walk = (dir: string): void => {
+    for (const name of readdirSync(dir)) {
+      const path = join(dir, name);
+      const stat = statSync(path);
+      if (stat.isDirectory()) walk(path);
+      else if (/\.(c|s|json|txt)$/.test(name)) out[relative(root, path)] = readFileSync(path, "utf8");
+    }
+  };
+  if (existsSync(root)) walk(root);
+  return out;
+}
+
+async function squeeze(name: string, raw: Uint8Array, level: number): Promise<Part> {
+  return { name, raw, packed: new Uint8Array(await Bun.zstdCompress(raw, { level })) };
+}
+
+async function binaryPart(path: string, id: string): Promise<Part> {
+  const known = packedBinaries.get(id);
+  if (known) return { name: "binary", raw: known.raw, packed: known.packed };
+  const part = await squeeze("binary", new Uint8Array(readFileSync(path)), 19);
+  if ("packed" in part) packedBinaries.set(id, { raw: part.raw, packed: part.packed });
+  return part;
+}
+
+/** Where projects live: one `.eleven` file each, in Documents/Eleven. */
+export function projectsFolder(): string {
+  return process.env.ELEVEN_PROJECTS_DIR ?? join(homedir(), "Documents", "Eleven");
+}
+
+function freePath(name: string): string {
+  const base = name.replace(/\.(app|eleven)$/i, "").replace(/[/\\:]/g, "_") || "Untitled";
+  let path = join(projectsFolder(), `${base}${EXTENSION}`);
+  for (let n = 2; existsSync(path); n++) path = join(projectsFolder(), `${base} ${n}${EXTENSION}`);
+  return path;
+}
+
+const text = (value: string): Uint8Array => new TextEncoder().encode(value);
+
+/** Packs the binary, your work, this project's chats and the decompiled code into one `.eleven` file. Compresses off the main thread. */
+export async function saveDocument(target: Target, id: string, path: string, remember = true): Promise<void> {
+  const chats = listThreads().filter((summary) => summary.project === id).flatMap((summary) => loadThread(summary.id) ?? []);
+  const parts: readonly Part[] = await Promise.all([
+    squeeze("project.json", text(projectJson(id)), 3),
+    squeeze("chats.json", text(JSON.stringify(chats)), 3),
+    squeeze("cache.json", text(JSON.stringify(cacheFiles(id))), 19),
+    binaryPart(target.path, id),
+  ]);
+  const info: Omit<Manifest, "format" | "entries"> = { name: target.name, kind: target.kind, arch: target.arch, meta: target.meta, binary: id, savedAt: Date.now(), app: appVersion() };
+  mkdirSync(dirname(path), { recursive: true });
+  writeAtomic(path, pack(info, parts));
+  if (remember) setDocumentPath(id, path);
+}
+
+/** Every project gets its file the first time it opens; returns where it is. */
+export async function ensureDocument(target: Target, id: string): Promise<string> {
+  const known = documentPath(id);
+  if (known) return known;
+  const path = freePath(target.name);
+  await saveDocument(target, id, path);
+  return path;
+}
+
+/** Deletes the project's `.eleven` file and every chat in it. */
+export function deleteDocument(id: string): void {
+  const path = documentPath(id);
+  if (path) rmSync(path, { force: true });
+  const { [id]: _gone, ...rest } = documents();
+  mkdirSync(dirname(DOCUMENTS), { recursive: true });
+  writeFileSync(DOCUMENTS, `${JSON.stringify(rest, null, 2)}\n`);
+  for (const thread of listThreads()) if (thread.project === id) deleteThread(thread.id);
+}
+
+/** Renames the project's file on disk, keeping it in the same folder. */
+export function renameDocument(id: string, name: string): string | null {
+  const from = documentPath(id);
+  const clean = name.trim().replace(/[/\\:]/g, "_");
+  if (!from || !clean) return null;
+  const to = join(dirname(from), `${clean.replace(/\.eleven$/i, "")}${EXTENSION}`);
+  if (to !== from) {
+    if (existsSync(to)) throw new Error("A project with that name is already in that folder.");
+    renameSync(from, to);
+    setDocumentPath(id, to);
+  }
+  return to;
+}
+
+function isThread(value: unknown): value is SavedThread {
+  return isRecord(value) && typeof value.id === "string" && typeof value.title === "string" && Array.isArray(value.messages) && typeof value.updatedAt === "number";
+}
+
+function json(data: Uint8Array | null): unknown {
+  return data ? JSON.parse(new TextDecoder().decode(data)) : null;
+}
+
+/** Unpacks a `.eleven` file: the binary into the cache, then your work, chats and decompiled code. */
+export function openDocument(path: string): { readonly manifest: Manifest; readonly binary: string } {
+  const file = openElevenFile(path);
+  try {
+    const { manifest } = file;
+    const id = manifest.binary;
+    const binary = join(cacheRoot(), id, "document", manifest.name.replace(/[/\\]/g, "_"));
+    if (!existsSync(binary) || sha256(new Uint8Array(readFileSync(binary))) !== id) {
+      const data = file.entry("binary");
+      if (!data) throw new Error("This project file has no binary in it.");
+      mkdirSync(dirname(binary), { recursive: true });
+      writeFileSync(binary, data, { mode: 0o755 });
+    }
+    const cache = json(file.entry("cache.json"));
+    if (isRecord(cache)) {
+      for (const [name, body] of Object.entries(cache)) {
+        const out = join(cacheRoot(), id, name);
+        if (typeof body !== "string" || !out.startsWith(join(cacheRoot(), id)) || existsSync(out)) continue;
+        mkdirSync(dirname(out), { recursive: true });
+        writeFileSync(out, body);
+      }
+    }
+    const work = file.entry("project.json");
+    if (work) restoreProjectJson(id, new TextDecoder().decode(work));
+    const chats = json(file.entry("chats.json"));
+    if (Array.isArray(chats)) {
+      for (const chat of chats.filter(isThread)) {
+        saveThread({ ...chat, project: id });
+        if (chat.named) renameThread(chat.id, chat.named);
+      }
+    }
+    setDocumentPath(id, path);
+    return { manifest, binary };
+  } finally {
+    file.close();
+  }
+}
+
+/** Asks where to save, with the macOS save panel; null when you cancel. */
+export async function askSavePath(name: string): Promise<string | null> {
+  const base = name.replace(/\.(app|eleven)$/i, "").replace(/"/g, "");
+  const script = `POSIX path of (choose file name with prompt "Save the project" default name "${base}${EXTENSION}" default location (path to documents folder))`;
+  try {
+    const { stdout } = await run("osascript", ["-e", script]);
+    const chosen = stdout.trim();
+    if (!chosen) return null;
+    return isElevenFile(chosen) ? chosen : `${chosen}${EXTENSION}`;
+  } catch {
+    return null;
+  }
+}

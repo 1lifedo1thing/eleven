@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Builds a portable, self-contained Rizin (static, paths relative to the binary)
+# into build/rizin, so Eleven.app can ship it and nobody installs Rizin by hand.
+set -euo pipefail
+
+app_dir="$(cd "$(dirname "$0")/.." && pwd)"
+version="${RIZIN_VERSION:-v0.9.1}"
+work="$app_dir/build/rizin-src"
+out="$app_dir/build/rizin"
+
+mkdir -p "$work"
+if [ ! -d "$work/rizin-$version" ]; then
+  curl -fsSL "https://github.com/rizinorg/rizin/releases/download/$version/rizin-src-$version.tar.xz" | tar -xJ -C "$work"
+fi
+if [ ! -x "$work/venv/bin/meson" ]; then
+  python3 -m venv "$work/venv"
+  "$work/venv/bin/pip" -q install meson ninja
+fi
+export PATH="$work/venv/bin:$PATH"
+cd "$work/rizin-$version"
+[ -d build ] || meson setup build --prefix=/ --buildtype=release -Dportable=true -Dlocal=enabled \
+  -Dstatic_runtime=true -Ddefault_library=static -Duse_sys_capstone=disabled -Denable_tests=false -Denable_rz_test=false
+ninja -C build
+rm -rf "$work/install" "$out"
+DESTDIR="$work/install" ninja -C build install > /dev/null
+mkdir -p "$out/bin" "$out/share"
+cp "$work/install/bin/rizin" "$out/bin/rizin"
+cp -R "$work/install/share/rizin" "$out/share/rizin"
+echo "$out"

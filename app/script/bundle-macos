@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+app_dir="$(cd "$(dirname "$0")/.." && pwd)"
+repo="$(cd "$app_dir/.." && pwd)"
+out="$app_dir/build/Eleven.app"
+version="$(cd "$app_dir" && bun -e 'console.log(require("./package.json").version ?? "0.1.0")')"
+
+rm -rf "$out"
+mkdir -p "$out/Contents/MacOS" "$out/Contents/Resources"
+(cd "$app_dir" && bun build --compile src/bundled.ts --outfile "$out/Contents/MacOS/Eleven" > /dev/null)
+cp -R "$app_dir/assets" "$out/Contents/Resources/assets"
+cp -R "$app_dir/skills" "$out/Contents/Resources/skills"
+cp -R "$app_dir/vendor" "$out/Contents/Resources/vendor"
+cp -R "$app_dir/assets/fonts" "$out/Contents/Resources/fonts"
+cp "$app_dir"/node_modules/@gpuix/native-darwin-*/gpuix-native.*.node "$out/Contents/Resources/gpuix-native.node"
+
+# The analysis engine: REA with only its runtime dependencies, and the Node that runs it.
+rea_src="${ELEVEN_REA_SOURCE:-$repo/../rea}"
+if [ -f "$rea_src/scripts/rea.mjs" ]; then
+  rsync -a --exclude /.git --exclude /src --exclude /tests --exclude /website --exclude /docs --exclude '/README_*' "$rea_src/" "$out/Contents/Resources/rea/"
+  (cd "$out/Contents/Resources/rea" && npm prune --omit=dev --no-audit --no-fund --offline > /dev/null 2>&1)
+  mkdir -p "$out/Contents/Resources/node/bin"
+  cp "$(node -p 'process.execPath')" "$out/Contents/Resources/node/bin/node"
+else
+  echo "warning: no REA checkout at $rea_src; the app will look for rea on PATH" >&2
+fi
+
+# Rizin, portable and static, so files open with no install.
+rizin_build="${ELEVEN_RIZIN_BUILD:-$app_dir/build/rizin}"
+[ -x "$rizin_build/bin/rizin" ] || "$app_dir/script/build-rizin" > /dev/null
+cp -R "$rizin_build" "$out/Contents/Resources/rizin"
+
+xcrun actool "$repo/assets/Eleven.icon" \
+  --compile "$out/Contents/Resources" \
+  --app-icon Eleven \
+  --platform macosx \
+  --minimum-deployment-target 14.0 \
+  --output-partial-info-plist "$out/Contents/Resources/.icon.plist" > /dev/null
+rm "$out/Contents/Resources/.icon.plist"
+cp "$repo/assets/ElevenDocument.icns" "$out/Contents/Resources/ElevenDocument.icns"
+
+cat > "$out/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key><string>Eleven</string>
+  <key>CFBundleDisplayName</key><string>Eleven</string>
+  <key>CFBundleIdentifier</key><string>app.chizi.eleven</string>
+  <key>CFBundleExecutable</key><string>Eleven</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>$version</string>
+  <key>CFBundleVersion</key><string>$version</string>
+  <key>UTExportedTypeDeclarations</key>
+  <array>
+    <dict>
+      <key>UTTypeIdentifier</key><string>app.chizi.eleven.project</string>
+      <key>UTTypeDescription</key><string>Eleven Project</string>
+      <key>UTTypeConformsTo</key><array><string>public.data</string></array>
+      <key>UTTypeIconFile</key><string>ElevenDocument</string>
+      <key>UTTypeTagSpecification</key>
+      <dict><key>public.filename-extension</key><array><string>eleven</string></array></dict>
+    </dict>
+  </array>
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeName</key><string>Eleven Project</string>
+      <key>CFBundleTypeRole</key><string>Editor</string>
+      <key>LSHandlerRank</key><string>Owner</string>
+      <key>CFBundleTypeIconFile</key><string>ElevenDocument</string>
+      <key>LSItemContentTypes</key><array><string>app.chizi.eleven.project</string></array>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key><string>App or binary</string>
+      <key>CFBundleTypeRole</key><string>Viewer</string>
+      <key>LSHandlerRank</key><string>Alternate</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>com.apple.application-bundle</string>
+        <string>public.executable</string>
+        <string>public.unix-executable</string>
+        <string>com.apple.mach-o-binary</string>
+        <string>public.data</string>
+      </array>
+    </dict>
+  </array>
+  <key>CFBundleIconFile</key><string>Eleven</string>
+  <key>CFBundleIconName</key><string>Eleven</string>
+  <key>LSMinimumSystemVersion</key><string>14.0</string>
+  <key>NSHighResolutionCapable</key><true/>
+  <key>ATSApplicationFontsPath</key><string>fonts</string>
+</dict>
+</plist>
+PLIST
+
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$out" > /dev/null 2>&1 || true
+
+echo "$out"

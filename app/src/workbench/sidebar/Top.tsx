@@ -1,0 +1,113 @@
+import type { ReactElement } from "react";
+
+import { Tooltip } from "../../components/kit";
+import { Icon, Popover, usePopover } from "../../components/ui";
+import type { ProjectEntry } from "../../engine/project";
+import { explainArch } from "../../lib/explain";
+import { fileIcon } from "../../lib/fileIcon";
+import { useLoaded } from "../../lib/useLoaded";
+import { runCommand } from "../../lib/shortcuts";
+import { comboFor } from "../../keys/keymaps";
+import { useSettings } from "../../settings/store";
+import { useTheme } from "../../theme";
+import { ago } from "../../welcome/files";
+import { FileGlyph } from "../FileGlyph";
+import { ELLIPSIS, HOVER, IconButton, useBench } from "../parts";
+import { INSET, SideRow } from "./parts";
+
+const MENU_WIDTH = 260;
+
+function Pill({ text }: { readonly text: string }): ReactElement {
+  const { p } = useTheme();
+  return <div style={{ paddingLeft: 6, paddingRight: 6, borderRadius: 5, backgroundColor: p.fill2, fontSize: 11, lineHeight: 17, color: p.muted, pointerEvents: "none" }}>{text}</div>;
+}
+
+/** Opens a recent project in this window; the chat in front comes along. */
+export function useOpenProject(): (entry: ProjectEntry) => void {
+  const { chat, openTarget } = useBench();
+  return (entry) => {
+    const target = chat.openProject(entry);
+    if (target && (target.kind === "binary" || target.kind === "app")) openTarget(target);
+  };
+}
+
+/** The icon Finder shows for a project's file: an app's own icon, or the Eleven document icon. */
+function ProjectIcon({ path }: { readonly path: string }): ReactElement {
+  const { p } = useTheme();
+  const icon = useLoaded<string | null>(() => fileIcon(path), `icon:${path}`);
+  if (icon.kind === "ready" && icon.value) return <img src={icon.value} style={{ width: 17, height: 17, borderRadius: 4 }} />;
+  return <Icon name="folder" size={17} color={p.muted} />;
+}
+
+export function ProjectRows({ onDone }: { readonly onDone: () => void }): ReactElement {
+  const { chat } = useBench();
+  const open = useOpenProject();
+  const now = Date.now();
+  return (
+    <>
+      {chat.projects.map((entry) => (
+        <SideRow key={entry.id} lead={{ kind: "node", node: <ProjectIcon path={entry.original} /> }} label={entry.name} side={ago(entry.openedAt, now)} on={entry.id === chat.project} onClick={() => { onDone(); open(entry); }} />
+      ))}
+    </>
+  );
+}
+
+function MenuTitle({ text }: { readonly text: string }): ReactElement {
+  const { p } = useTheme();
+  return <div style={{ paddingTop: 4, paddingBottom: 4, paddingLeft: INSET, fontSize: 12, color: p.faint }}>{text}</div>;
+}
+
+/** The open project, large, with a menu of recent projects and a way to open another file. */
+export function ProjectSwitcher(): ReactElement {
+  const { p } = useTheme();
+  const { program, chat, wb } = useBench();
+  const { settings } = useSettings();
+  const menu = usePopover();
+  const format = chat.target?.meta.split(" · ")[0] ?? "";
+  return (
+    <div style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", height: 46, paddingRight: 2 }}>
+        <IconButton icon="sidebar" label="Hide sidebar" iconSize={16} onClick={() => wb.patch({ sidebarOpen: false })} />
+      </div>
+      <div style={{ display: "flex", position: "relative" }}>
+        <div onMouseDown={menu.onTriggerDown} onClick={menu.onTriggerClick} role="button" aria-expanded={menu.open} aria-label="Switch project" style={{ display: "flex", alignItems: "center", gap: 10, flexGrow: 1, minWidth: 0, padding: INSET, borderRadius: 10, cursor: "pointer", hover: HOVER, ...(menu.open ? { backgroundColor: p.sel } : {}) }}>
+          <FileGlyph size={34} />
+          <div style={{ display: "flex", flexDirection: "column", gap: 2, flexGrow: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 600, fontSize: 15, lineHeight: 20, color: p.text, pointerEvents: "none", ...ELLIPSIS }}>{program.name}</div>
+            <div style={{ display: "flex", gap: 4 }}>
+              {program.arch && <Tooltip label={explainArch(program.arch)}><div style={{ display: "flex" }}><Pill text={program.arch} /></div></Tooltip>}
+              {format && <Pill text={format} />}
+            </div>
+          </div>
+          <Icon name="updown" size={14} color={p.muted} />
+        </div>
+        {menu.open && (
+          <Popover side="bottom" align="start" gap={6} onDismiss={menu.dismiss}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, width: MENU_WIDTH, padding: 6, borderWidth: 1, borderColor: p.line3, borderRadius: 12, backgroundColor: p.raised2 }}>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <MenuTitle text="Recent projects" />
+                <ProjectRows onDone={menu.close} />
+              </div>
+              <SideRow lead={{ kind: "icon", name: "new" }} label="Open another file…" combo={comboFor("open", settings.keymap ?? "eleven", settings.shortcuts)} onClick={() => { menu.close(); runCommand("open"); }} />
+            </div>
+          </Popover>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** New chat, search, playbooks and debug: the things you start from, in the reference's plain style. */
+export function QuickActions({ onPlaybooks }: { readonly onPlaybooks: () => void }): ReactElement {
+  const { wb, chat } = useBench();
+  const { settings } = useSettings();
+  const combo = (id: "thread" | "palette"): string => comboFor(id, settings.keymap ?? "eleven", settings.shortcuts);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", flexShrink: 0, paddingTop: 10 }}>
+      <SideRow lead={{ kind: "icon", name: "new-chat" }} label="New chat" combo={combo("thread")} onClick={() => { chat.thread.reset(); wb.reveal("agent"); }} />
+      <SideRow lead={{ kind: "icon", name: "search" }} label="Search" combo={combo("palette")} onClick={() => wb.patch({ paletteOpen: true, paletteQuery: "" })} />
+      <SideRow lead={{ kind: "icon", name: "plan" }} label="Playbooks" onClick={onPlaybooks} />
+      <SideRow lead={{ kind: "icon", name: "debug" }} label="Debug this program" onClick={() => wb.reveal("debug")} />
+    </div>
+  );
+}

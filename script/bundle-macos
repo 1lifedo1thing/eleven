@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root="$(cd "$(dirname "$0")/.." && pwd)"
+profile="${1:-release}"
+app="$root/target/$profile/Eleven.app"
+version="$(cargo metadata --no-deps --format-version 1 --manifest-path "$root/Cargo.toml" \
+  | python3 -c 'import json,sys; print(next(p["version"] for p in json.load(sys.stdin)["packages"] if p["name"] == "eleven"))')"
+
+export SDKROOT="${SDKROOT:-$(xcrun --show-sdk-path)}"
+if [[ "$profile" == "release" ]]; then
+  cargo build --release -p eleven --manifest-path "$root/Cargo.toml"
+else
+  cargo build -p eleven --manifest-path "$root/Cargo.toml"
+fi
+
+rm -rf "$app"
+mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+cp "$root/target/$profile/eleven" "$app/Contents/MacOS/Eleven"
+
+xcrun actool "$root/assets/Eleven.icon" \
+  --compile "$app/Contents/Resources" \
+  --app-icon Eleven \
+  --platform macosx \
+  --minimum-deployment-target 14.0 \
+  --output-partial-info-plist "$app/Contents/Resources/.icon.plist" > /dev/null
+rm "$app/Contents/Resources/.icon.plist"
+
+cat > "$app/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key><string>Eleven</string>
+  <key>CFBundleDisplayName</key><string>Eleven</string>
+  <key>CFBundleIdentifier</key><string>app.chizi.eleven</string>
+  <key>CFBundleExecutable</key><string>Eleven</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>$version</string>
+  <key>CFBundleVersion</key><string>$version</string>
+  <key>CFBundleIconFile</key><string>Eleven</string>
+  <key>CFBundleIconName</key><string>Eleven</string>
+  <key>LSMinimumSystemVersion</key><string>14.0</string>
+  <key>NSHighResolutionCapable</key><true/>
+</dict>
+</plist>
+PLIST
+
+echo "$app"

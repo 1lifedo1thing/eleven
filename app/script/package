@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# Builds Eleven.app, signs it with a Developer ID (hardened runtime, secure
+# timestamp), notarizes and staples it, and zips it for release.
+#   ELEVEN_SIGN_IDENTITY   "Developer ID Application: ..." (unset: ad-hoc, local use only)
+#   ELEVEN_NOTARY_PROFILE  notarytool keychain profile (default eleven-notary; "skip" to not notarize)
+#   ELEVEN_ASC_PROFILE     notarize with `asc --profile <name>` instead of notarytool
+set -euo pipefail
+
+app_dir="$(cd "$(dirname "$0")/.." && pwd)"
+out="$app_dir/build/Eleven.app"
+version="$(cd "$app_dir" && bun -e 'console.log(require("./package.json").version ?? "0.1.0")')"
+arch="$(uname -m)"
+identity="${ELEVEN_SIGN_IDENTITY:--}"
+profile="${ELEVEN_NOTARY_PROFILE:-eleven-notary}"
+entitlements="$app_dir/script/Eleven.entitlements"
+zip="$app_dir/build/Eleven-$version-$arch.zip"
+
+echo "building $out"
+"$app_dir/script/bundle-macos" > /dev/null
+
+sign() {
+  if [ "$identity" = "-" ]; then
+    codesign --force --sign - "$@"
+  else
+    codesign --force --timestamp --options runtime --sign "$identity" "$@"
+  fi
+}
+
+echo "signing with: $identity"
+main="$out/Contents/MacOS/Eleven"
+# Every nested Mach-O first, deepest paths first, then the app itself.
+find "$out/Contents" -type f ! -path "$main" -print0 \
+  | xargs -0 file --no-pad | grep -E ': +Mach-O' | cut -d: -f1 \
+  | awk '{ print length, $0 }' | sort -rn | cut -d' ' -f2- \
+  | while IFS= read -r bin; do
+      case "$bin" in
+        */node/bin/node) sign --entitlements "$entitlements" "$bin" ;;
+        *) sign "$bin" ;;
+      esac
+    done
+sign --entitlements "$entitlements" "$main"
+sign --entitlements "$entitlements" "$out"
+codesign --verify --deep --strict --verbose=2 "$out"
+echo "signature verifies"
+
+rm -f "$zip"
+ditto -c -k --sequesterRsrc --keepParent "$out" "$zip"
+
+if [ "$identity" != "-" ] && [ "$profile" != "skip" ]; then
+  echo "notarizing"
+  if [ -n "${ELEVEN_ASC_PROFILE:-}" ]; then
+    ASC_UPLOAD_TIMEOUT="${ASC_UPLOAD_TIMEOUT:-1800s}" asc --profile "$ELEVEN_ASC_PROFILE" notarization submit --file "$zip" --wait --timeout 1h --output table
+  else
+    xcrun notarytool submit "$zip" --keychain-profile "$profile" --wait
+  fi
+  xcrun stapler staple "$out"
+  xcrun stapler validate "$out"
+  spctl --assess --type execute --verbose=2 "$out"
+  rm -f "$zip"
+  ditto -c -k --sequesterRsrc --keepParent "$out" "$zip"
+fi
+
+echo "packaged $zip ($(du -h "$zip" | cut -f1))"
+[ "$identity" = "-" ] && echo "NOTE: ad-hoc signed, for this Mac only. Set ELEVEN_SIGN_IDENTITY to release."
+exit 0
