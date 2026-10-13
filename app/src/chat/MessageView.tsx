@@ -24,7 +24,7 @@ type PermissionMessage = Extract<Message, { kind: "permission" }>;
 
 function preview(value: unknown): string {
   if (value === undefined || value === null) return "";
-  const text = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+  const text = typeof value === "string" ? value : (stringField(value, "command") ?? JSON.stringify(value, null, 2));
   return text.length > PREVIEW_CHARS ? `${text.slice(0, PREVIEW_CHARS)}\n…` : text;
 }
 
@@ -127,8 +127,8 @@ function ToolStep({ step, onOpen }: { readonly step: Step; readonly onOpen: (pro
   const header = (
     <div onClick={() => setOpen(!open)} role="button" aria-expanded={open} aria-label={open ? "Hide what it sent and got back" : "Show what it sent and got back"} style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, cursor: "pointer", hover: { opacity: 0.72 } }}>
       <div style={{ flexShrink: 0, paddingLeft: 6, paddingRight: 6, paddingTop: 1, paddingBottom: 1, borderRadius: 5, backgroundColor: p.fill2, fontSize: 11, color: p.muted, pointerEvents: "none" }}>Tool</div>
-      <Tooltip label={step.tool}>
-        <div style={{ flexShrink: 0, whiteSpace: "nowrap" }}>{label}</div>
+      <Tooltip label={step.tool.trim().split("\n")[0] ?? step.tool}>
+        <div style={{ flexShrink: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</div>
       </Tooltip>
       {detail && <div style={{ flexShrink: 1, minWidth: 0, fontSize: 12, color: p.faint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{detail}</div>}
       <Spacer />
@@ -335,7 +335,7 @@ function PermissionCard({ message, agentName, onAnswer }: {
   const question = message.tool.trim().endsWith("?");
   const input = question ? "" : preview(message.input);
   const firstAllow = question ? -1 : message.choices.findIndex((choice) => choice.allows);
-  const title = question ? message.tool.trim() : `${agentName} wants to ${label.toLowerCase()}${detail ? ` ${detail}` : ""}`;
+  const title = question ? message.tool.trim() : `${agentName} wants to ${label.charAt(0).toLowerCase()}${label.slice(1)}${detail ? ` ${detail}` : ""}`;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 12, paddingBottom: 12, paddingLeft: 14, paddingRight: 14, borderWidth: 1, borderColor: p.warnLine, borderRadius: 12, backgroundColor: p.warnBg }}>
       <Row gap={8}>

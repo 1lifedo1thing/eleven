@@ -23,7 +23,9 @@ const LABELS: Readonly<Record<string, readonly [label: string, arg?: string]>> =
 
 export type ToolLabel = { readonly label: string; readonly detail: string | null };
 
+/** Tool ids read as words; anything else, like a whole shell command an agent sent as the title, stays as written. */
 function humanize(name: string): string {
+  if (!/^[\w.-]+$/.test(name)) return name.trim().split("\n")[0] ?? name;
   const label = name.replace(/^mcp__[^_]+__/, "").replace(/_/g, " ");
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
@@ -34,6 +36,11 @@ function shortPath(value: string): string {
 
 /** Splits a raw tool call into the bold label and the grey detail people read. */
 export function toolLabel(tool: string, input: unknown): ToolLabel {
+  const command = stringField(input, "command");
+  if (command !== undefined) {
+    const description = stringField(input, "description")?.trim();
+    return description ? { label: description, detail: null } : { label: "Run a command", detail: command.trim().split("\n")[0] ?? null };
+  }
   const name = reaToolName(tool) ?? tool;
   const known = LABELS[name];
   if (!known) return { label: humanize(name), detail: null };
