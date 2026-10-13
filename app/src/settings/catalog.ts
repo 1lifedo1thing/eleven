@@ -20,7 +20,7 @@ import type { Page } from "./pages";
 import { DEFAULT_SETTINGS, type PathKey, PERMISSION_TOOLS, type PermissionLevel, type PermissionTool, saveSettings, type Settings, SETTINGS_FILE } from "./store";
 import { openLink, pickPath, showInFinder, tildePath } from "./system";
 import { ASSETS } from "../lib/assets";
-import { dataRoot, FILE_MANAGER, THIS_DEVICE } from "../lib/platform";
+import { dataRoot, FILE_MANAGER, OS, THIS_DEVICE } from "../lib/platform";
 import { MOD } from "../lib/platform";
 
 export type Ctx = {
@@ -276,7 +276,7 @@ export function buildPages(c: Ctx): Readonly<Record<Page, readonly GroupModel[]>
         tg("restoreLayout", "Reopen tabs and splits", "Bring back the workbench layout of each project when you open it."),
       ] },
       { label: "Updates", rows: [
-        tg("autoUpdate", "Update automatically", "Download updates in the background and install them the next time Eleven opens."),
+        ...(OS === "mac" ? [tg("autoUpdate", "Update automatically", "Download updates in the background and install them when you quit Eleven.")] : []),
         seg("updateChannel", "Update channel", "Beta gets new features a few weeks early.", ["Stable", "Beta"]),
         info(`Eleven ${app.version}`, app.line, { buttons: app.download ? [btn("Download", () => openLink(app.download ?? ""), "primary")] : [btn("Check now", c.checkApp)] }),
       ] },
