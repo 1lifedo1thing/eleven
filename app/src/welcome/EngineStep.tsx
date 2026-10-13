@@ -121,7 +121,7 @@ export function EngineStep({ engines }: { readonly engines: Engines }): ReactEle
         {ENGINES.map((engine) => <Row key={engine.id} engine={engine} engines={engines} />)}
         <BundledRow />
       </Panel>
-      <Note text="Rizin comes with Eleven, so files open right away. Java and Ghidra download by themselves for deeper analysis, inside Eleven's own folder, so nothing else on your computer changes." />
+      <Note text="Rizin comes with Eleven, so files open right away. Ghidra is optional: install it here for deeper analysis. It goes into Eleven's own folder with Java, so nothing else on your computer changes." />
     </>
   );
 }

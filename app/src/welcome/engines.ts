@@ -242,9 +242,3 @@ export function startInstall(id: EngineId): Promise<void> {
   pending.set(id, next);
   return next;
 }
-
-/** On launch, fetches whatever Eleven still needs in the background, so nobody has to install anything by hand. */
-export function fetchMissingEngines(): void {
-  if (process.env.ELEVEN_NO_DOWNLOADS) return;
-  if (!detectEngine("ghidra").found || !detectEngine("java").found) void startInstall("ghidra");
-}

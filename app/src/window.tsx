@@ -7,12 +7,10 @@ import { startAppBridge } from "./bridge/live";
 import { dispatchShortcut } from "./lib/shortcuts";
 import { prepareTarget, type Target } from "./engine/target";
 import { adoptToolchain } from "./engine/toolchain";
-import { fetchMissingEngines } from "./welcome/engines";
 import { startUpdates } from "./lib/update";
 
 await adoptLoginShell();
 adoptToolchain();
-fetchMissingEngines();
 startAppBridge();
 startUpdates();
 
