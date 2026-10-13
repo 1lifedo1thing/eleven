@@ -19,6 +19,7 @@ import type { Action, Confirm, Control, GroupModel, Lead, Option, SettingRowMode
 import type { Page } from "./pages";
 import { DEFAULT_SETTINGS, type PathKey, PERMISSION_TOOLS, type PermissionLevel, type PermissionTool, saveSettings, type Settings, SETTINGS_FILE } from "./store";
 import { openLink, pickPath, showInFinder, tildePath } from "./system";
+import { ASSETS } from "../lib/assets";
 import { dataRoot, FILE_MANAGER, THIS_DEVICE } from "../lib/platform";
 import { MOD } from "../lib/platform";
 
@@ -44,7 +45,7 @@ export type Ctx = {
   readonly setup: () => void;
 };
 
-const ENGINES_DIR = join(import.meta.dir, "..", "..", "assets", "engines");
+const ENGINES_DIR = join(ASSETS, "engines");
 export const ENGINE_LOGO = {
   rizin: join(ENGINES_DIR, "rizin.svg"),
   ghidra: join(ENGINES_DIR, "ghidra.png"),
