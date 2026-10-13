@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+# Builds a portable Eleven for Linux x64 into build/linux/Eleven (bin/eleven + Resources/),
+# tars it, and makes an AppImage when appimagetool is on PATH or APPIMAGETOOL is set.
+#   ELEVEN_REA_SOURCE    REA checkout with Linux node_modules (default ../../rea)
+#   ELEVEN_NODE_VERSION  Node shipped to run REA (default: the Node on PATH)
+#   ELEVEN_RIZIN_BUILD   prebuilt portable Rizin (default: built into build/rizin-linux)
+set -euo pipefail
+
+[ "$(uname -s)" = Linux ] && [ "$(uname -m)" = x86_64 ] || { echo "bundle-linux runs on Linux x64" >&2; exit 1; }
+
+app_dir="$(cd "$(dirname "$0")/.." && pwd)"
+repo="$(cd "$app_dir/.." && pwd)"
+version="$(cd "$app_dir" && bun -e 'console.log(require("./package.json").version ?? "0.1.0")')"
+root="$app_dir/build/linux"
+out="$root/Eleven"
+res="$out/Resources"
+cache="$app_dir/build/cache"
+tarball="$app_dir/build/Eleven-$version-linux-x64.tar.gz"
+appimage="$app_dir/build/Eleven-$version-linux-x64.AppImage"
+node_version="${ELEVEN_NODE_VERSION:-$(node -v 2>/dev/null || echo v24.18.0)}"
+rizin_version="${RIZIN_VERSION:-v0.9.1}"
+
+rm -rf "$out"
+mkdir -p "$out/bin" "$res" "$cache"
+(cd "$app_dir" && bun build --compile --target=bun-linux-x64 src/bundled.ts --outfile "$out/bin/eleven" > /dev/null)
+cp -R "$app_dir/assets" "$res/assets"
+cp -R "$app_dir/skills" "$res/skills"
+cp -R "$app_dir/vendor" "$res/vendor"
+cp -R "$app_dir/assets/fonts" "$res/fonts"
+
+gpuix_pkg="@gpuix/native-linux-x64-gnu"
+native="$(find "$app_dir/node_modules/$gpuix_pkg" -maxdepth 1 -name 'gpuix-native.*.node' 2> /dev/null | head -n1 || true)"
+if [ -z "$native" ]; then
+  gpuix_version="$(cd "$app_dir" && bun -e 'console.log(require("@gpuix/native/package.json").version)')"
+  rm -rf "$cache/gpuix-linux" && mkdir -p "$cache/gpuix-linux"
+  (cd "$cache/gpuix-linux" && npm pack --silent "$gpuix_pkg@$gpuix_version" > /dev/null && tar -xzf ./*.tgz)
+  native="$(find "$cache/gpuix-linux/package" -maxdepth 1 -name 'gpuix-native.*.node' | head -n1)"
+fi
+cp "$native" "$res/gpuix-native.node"
+
+# REA with only its runtime dependencies. Its node_modules must come from an install on Linux.
+rea_src="${ELEVEN_REA_SOURCE:-$repo/../rea}"
+if [ -f "$rea_src/scripts/rea.mjs" ]; then
+  mkdir -p "$res/rea"
+  for entry in "$rea_src"/* "$rea_src"/.[!.]*; do
+    name="$(basename "$entry")"
+    case "$name" in
+      .git | src | tests | website | docs | README_* | '.[!.]*') continue ;;
+    esac
+    cp -R "$entry" "$res/rea/$name"
+  done
+  (cd "$res/rea" && npm prune --omit=dev --no-audit --no-fund --offline > /dev/null 2>&1)
+else
+  echo "warning: no REA checkout at $rea_src; the app will look for rea on PATH" >&2
+fi
+
+node_dist="node-$node_version-linux-x64"
+[ -f "$cache/$node_dist.tar.xz" ] || curl -fsSL "https://nodejs.org/dist/$node_version/$node_dist.tar.xz" -o "$cache/$node_dist.tar.xz"
+rm -rf "${cache:?}/$node_dist"
+tar -xJf "$cache/$node_dist.tar.xz" -C "$cache" "$node_dist/bin/node" "$node_dist/lib/node_modules/npm" "$node_dist/LICENSE"
+mkdir -p "$res/node/bin" "$res/node/lib/node_modules"
+cp "$cache/$node_dist/bin/node" "$res/node/bin/node"
+cp -R "$cache/$node_dist/lib/node_modules/npm" "$res/node/lib/node_modules/npm"
+ln -s ../lib/node_modules/npm/bin/npm-cli.js "$res/node/bin/npm"
+ln -s ../lib/node_modules/npm/bin/npx-cli.js "$res/node/bin/npx"
+cp "$cache/$node_dist/LICENSE" "$res/node/LICENSE"
+
+build_rizin() {
+  local work="$app_dir/build/rizin-linux-src" dest="$1"
+  mkdir -p "$work"
+  if [ ! -d "$work/rizin-$rizin_version" ]; then
+    curl -fsSL "https://github.com/rizinorg/rizin/releases/download/$rizin_version/rizin-src-$rizin_version.tar.xz" | tar -xJ -C "$work"
+  fi
+  if [ ! -x "$work/venv/bin/meson" ]; then
+    python3 -m venv "$work/venv"
+    "$work/venv/bin/pip" -q install meson ninja
+  fi
+  (
+    export PATH="$work/venv/bin:$PATH"
+    cd "$work/rizin-$rizin_version"
+    [ -d build ] || meson setup build --prefix=/ --buildtype=release -Dportable=true -Dlocal=enabled \
+      -Dstatic_runtime=true -Ddefault_library=static -Duse_sys_capstone=disabled -Denable_tests=false -Denable_rz_test=false
+    ninja -C build
+    rm -rf "$work/install" "$dest"
+    DESTDIR="$work/install" ninja -C build install > /dev/null
+  )
+  mkdir -p "$dest/bin" "$dest/share"
+  cp "$work/install/bin/rizin" "$dest/bin/rizin"
+  cp -R "$work/install/share/rizin" "$dest/share/rizin"
+}
+
+rizin_build="${ELEVEN_RIZIN_BUILD:-$app_dir/build/rizin-linux}"
+[ -x "$rizin_build/bin/rizin" ] || build_rizin "$rizin_build" > /dev/null
+cp -R "$rizin_build" "$res/rizin"
+
+cp "$app_dir/assets/icon-light.png" "$out/eleven.png"
+cat > "$out/eleven.desktop" << DESKTOP
+[Desktop Entry]
+Type=Application
+Name=Eleven
+Comment=Agent-first reverse engineering
+Exec=eleven %F
+Icon=eleven
+Terminal=false
+Categories=Development;
+DESKTOP
+cat > "$out/AppRun" << 'APPRUN'
+#!/bin/sh
+here="$(dirname "$(readlink -f "$0")")"
+exec "$here/bin/eleven" "$@"
+APPRUN
+chmod +x "$out/AppRun" "$out/bin/eleven"
+
+rm -f "$tarball"
+tar -C "$root" -czf "$tarball" Eleven
+echo "packaged $tarball ($(du -h "$tarball" | cut -f1))"
+
+appimagetool="${APPIMAGETOOL:-$(command -v appimagetool || true)}"
+if [ -n "$appimagetool" ]; then
+  rm -f "$appimage"
+  ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 "$appimagetool" --no-appstream "$out" "$appimage" > /dev/null
+  echo "packaged $appimage ($(du -h "$appimage" | cut -f1))"
+else
+  echo "appimagetool not found; skipped the AppImage"
+fi

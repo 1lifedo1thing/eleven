@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+# Builds a portable Eleven for Windows x64 into build/windows/Eleven (bin/Eleven.exe + Resources/)
+# and zips it. Runs in Git Bash on Windows.
+#   ELEVEN_REA_SOURCE      REA checkout with Windows node_modules (default ../../rea)
+#   ELEVEN_NODE_VERSION    Node shipped to run REA (default: the Node on PATH)
+#   WINDOWS_CERT_PFX       base64 code signing certificate; unset skips signing
+#   WINDOWS_CERT_PASSWORD  its password
+set -euo pipefail
+
+case "$(uname -s)" in
+  MINGW* | MSYS* | CYGWIN*) ;;
+  *) echo "bundle-windows runs in Git Bash on Windows" >&2; exit 1 ;;
+esac
+
+app_dir="$(cd "$(dirname "$0")/.." && pwd)"
+repo="$(cd "$app_dir/.." && pwd)"
+version="$(cd "$app_dir" && bun -e 'console.log(require("./package.json").version ?? "0.1.0")')"
+root="$app_dir/build/windows"
+out="$root/Eleven"
+res="$out/Resources"
+cache="$app_dir/build/cache"
+zip="$app_dir/build/Eleven-$version-windows-x64.zip"
+node_version="${ELEVEN_NODE_VERSION:-$(node -v 2>/dev/null || echo v24.18.0)}"
+rizin_version="${RIZIN_VERSION:-v0.9.1}"
+
+rm -rf "$out"
+mkdir -p "$out/bin" "$res" "$cache"
+(cd "$app_dir" && bun build --compile --target=bun-windows-x64 \
+  --windows-icon=script/Eleven.ico --windows-hide-console \
+  --windows-title=Eleven --windows-version="$version.0" \
+  src/bundled.ts --outfile "$out/bin/Eleven.exe" > /dev/null)
+cp -R "$app_dir/assets" "$res/assets"
+cp -R "$app_dir/skills" "$res/skills"
+cp -R "$app_dir/vendor" "$res/vendor"
+cp -R "$app_dir/assets/fonts" "$res/fonts"
+
+gpuix_pkg="@gpuix/native-win32-x64-msvc"
+native="$(find "$app_dir/node_modules/$gpuix_pkg" -maxdepth 1 -name 'gpuix-native.*.node' 2> /dev/null | head -n1 || true)"
+if [ -z "$native" ]; then
+  gpuix_version="$(cd "$app_dir" && bun -e 'console.log(require("@gpuix/native/package.json").version)')"
+  rm -rf "$cache/gpuix-windows" && mkdir -p "$cache/gpuix-windows"
+  (cd "$cache/gpuix-windows" && npm pack --silent "$gpuix_pkg@$gpuix_version" > /dev/null && tar -xzf ./*.tgz)
+  native="$(find "$cache/gpuix-windows/package" -maxdepth 1 -name 'gpuix-native.*.node' | head -n1)"
+fi
+cp "$native" "$res/gpuix-native.node"
+
+# REA with only its runtime dependencies. Its node_modules must come from an install on Windows.
+rea_src="${ELEVEN_REA_SOURCE:-$repo/../rea}"
+if [ -f "$rea_src/scripts/rea.mjs" ]; then
+  mkdir -p "$res/rea"
+  for entry in "$rea_src"/* "$rea_src"/.[!.]*; do
+    name="$(basename "$entry")"
+    case "$name" in
+      .git | src | tests | website | docs | README_* | '.[!.]*') continue ;;
+    esac
+    cp -R "$entry" "$res/rea/$name"
+  done
+  (cd "$res/rea" && npm prune --omit=dev --no-audit --no-fund --offline > /dev/null 2>&1)
+else
+  echo "warning: no REA checkout at $rea_src; the app will look for rea on PATH" >&2
+fi
+
+node_dist="node-$node_version-win-x64"
+[ -f "$cache/$node_dist.zip" ] || curl -fsSL "https://nodejs.org/dist/$node_version/$node_dist.zip" -o "$cache/$node_dist.zip"
+rm -rf "${cache:?}/$node_dist"
+unzip -q "$cache/$node_dist.zip" -d "$cache"
+rm -rf "$cache/$node_dist/node_modules/corepack" "$cache/$node_dist"/corepack*
+cp -R "$cache/$node_dist" "$res/node"
+
+rizin_zip="rizin-windows-static-$rizin_version.zip"
+[ -f "$cache/$rizin_zip" ] || curl -fsSL "https://github.com/rizinorg/rizin/releases/download/$rizin_version/$rizin_zip" -o "$cache/$rizin_zip"
+rm -rf "$cache/rizin-windows" && mkdir -p "$cache/rizin-windows"
+unzip -q "$cache/$rizin_zip" -d "$cache/rizin-windows"
+rizin_root="$(dirname "$(dirname "$(find "$cache/rizin-windows" -path '*/bin/rizin.exe' | head -n1)")")"
+mkdir -p "$res/rizin/bin"
+cp "$rizin_root/bin/rizin.exe" "$res/rizin/bin/rizin.exe"
+cp -R "$rizin_root/share" "$res/rizin/share"
+
+if [ -n "${WINDOWS_CERT_PFX:-}" ]; then
+  signtool="$(find "/c/Program Files (x86)/Windows Kits/10/bin" -path '*/x64/signtool.exe' 2> /dev/null | sort | tail -n1)"
+  [ -n "$signtool" ] || { echo "signtool.exe not found; install the Windows SDK" >&2; exit 1; }
+  pfx="$(mktemp -d)/eleven.pfx"
+  trap 'rm -f "$pfx"' EXIT
+  printf '%s' "$WINDOWS_CERT_PFX" | base64 -d > "$pfx"
+  echo "signing"
+  MSYS_NO_PATHCONV=1 "$signtool" sign /f "$(cygpath -w "$pfx")" /p "${WINDOWS_CERT_PASSWORD:-}" \
+    /fd sha256 /tr http://timestamp.digicert.com /td sha256 /d Eleven \
+    "$(cygpath -w "$out/bin/Eleven.exe")" "$(cygpath -w "$res/rizin/bin/rizin.exe")" "$(cygpath -w "$res/gpuix-native.node")"
+  rm -f "$pfx"
+else
+  echo "WINDOWS_CERT_PFX not set; skipped code signing"
+fi
+
+rm -f "$zip"
+if command -v 7z > /dev/null; then
+  (cd "$root" && 7z a -tzip -mx=7 "$(cygpath -w "$zip")" Eleven > /dev/null)
+else
+  powershell.exe -NoProfile -Command "Compress-Archive -Path '$(cygpath -w "$out")' -DestinationPath '$(cygpath -w "$zip")'"
+fi
+echo "packaged $zip ($(du -h "$zip" | cut -f1))"
