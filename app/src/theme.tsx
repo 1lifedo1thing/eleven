@@ -51,6 +51,10 @@ export const DARK = {
   onWarn: "#1a1406",
   errBg: "#160f10",
   errLine: "#3d2226",
+  addBg: "rgba(152,195,121,0.09)",
+  addMark: "rgba(152,195,121,0.28)",
+  delBg: "rgba(224,108,117,0.09)",
+  delMark: "rgba(224,108,117,0.28)",
   ring: "rgba(255,255,255,0.08)",
   icon: "icon-dark.png",
 };
@@ -94,6 +98,10 @@ export const LIGHT: Palette = {
   onWarn: "#1a1406",
   errBg: "#fdeeee",
   errLine: "#f1c6ca",
+  addBg: "rgba(80,161,79,0.10)",
+  addMark: "rgba(80,161,79,0.26)",
+  delBg: "rgba(228,86,73,0.09)",
+  delMark: "rgba(228,86,73,0.24)",
   ring: "rgba(0,0,0,0.08)",
   icon: "icon-light.png",
 };

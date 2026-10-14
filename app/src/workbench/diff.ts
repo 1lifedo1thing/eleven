@@ -55,3 +55,90 @@ export function lineDiff(before: string, after: string): readonly DiffLine[] {
   for (; j < m; j++) out.push({ op: "add", text: b[j] ?? "" });
   return out;
 }
+
+/** The part of an edited line that actually changed, so a review can mark just those characters. */
+export type Span = { readonly start: number; readonly end: number };
+
+export type ReviewRow =
+  | { readonly kind: "line"; readonly op: DiffOp; readonly text: string; readonly before: number | null; readonly after: number | null; readonly changed: Span | null }
+  | { readonly kind: "fold"; readonly at: number; readonly count: number };
+
+export type DiffStats = { readonly added: number; readonly removed: number };
+
+export function diffStats(lines: readonly DiffLine[]): DiffStats {
+  return { added: lines.filter((line) => line.op === "add").length, removed: lines.filter((line) => line.op === "del").length };
+}
+
+/** Where two versions of a line differ, after their shared start and end; null when nothing is shared. */
+export function changedSpan(line: string, other: string): Span | null {
+  let start = 0;
+  while (start < line.length && start < other.length && line[start] === other[start]) start++;
+  let end = 0;
+  while (end < line.length - start && end < other.length - start && line[line.length - 1 - end] === other[other.length - 1 - end]) end++;
+  if (start === 0 && end === 0) return null;
+  return { start, end: line.length - end };
+}
+
+/** Pairs each removed line with the added line in the same spot of the change that replaced it. */
+function partners(lines: readonly DiffLine[]): ReadonlyMap<number, number> {
+  const pairs = new Map<number, number>();
+  let i = 0;
+  while (i < lines.length) {
+    if (lines[i]?.op !== "del") {
+      i++;
+      continue;
+    }
+    const dels = i;
+    while (lines[i]?.op === "del") i++;
+    const adds = i;
+    while (lines[i]?.op === "add") i++;
+    for (let k = 0; k < Math.min(adds - dels, i - adds); k++) {
+      pairs.set(dels + k, adds + k);
+      pairs.set(adds + k, dels + k);
+    }
+  }
+  return pairs;
+}
+
+/** A diff as a code review shows it: numbers on both sides, edited words marked, long unchanged stretches folded unless opened. */
+export function reviewRows(lines: readonly DiffLine[], opened: ReadonlySet<number>, context = 3): readonly ReviewRow[] {
+  const pairs = partners(lines);
+  const near = lines.map(() => false);
+  lines.forEach((line, ix) => {
+    if (line.op === "same") return;
+    for (let k = Math.max(0, ix - context); k <= Math.min(lines.length - 1, ix + context); k++) near[k] = true;
+  });
+  const rows: ReviewRow[] = [];
+  let before = 0;
+  let after = 0;
+  let ix = 0;
+  while (ix < lines.length) {
+    const start = ix;
+    while (ix < lines.length && !near[ix] && lines[ix]?.op === "same") ix++;
+    const hidden = ix - start;
+    if (hidden > 1 && !opened.has(start)) {
+      rows.push({ kind: "fold", at: start, count: hidden });
+      before += hidden;
+      after += hidden;
+      continue;
+    }
+    ix = start + Math.max(hidden, 1);
+    for (let k = start; k < ix; k++) {
+      const line = lines[k];
+      if (!line) continue;
+      if (line.op !== "add") before++;
+      if (line.op !== "del") after++;
+      const other = pairs.get(k);
+      const partner = other === undefined ? undefined : lines[other];
+      rows.push({
+        kind: "line",
+        op: line.op,
+        text: line.text,
+        before: line.op === "add" ? null : before,
+        after: line.op === "del" ? null : after,
+        changed: partner ? changedSpan(line.text, partner.text) : null,
+      });
+    }
+  }
+  return rows;
+}
