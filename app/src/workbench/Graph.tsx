@@ -2,6 +2,7 @@ import { type EventPayload, type PublicInstance, useGpuix } from "@gpuix/react";
 import { type ReactElement, type RefObject, useEffect, useMemo, useRef, useState } from "react";
 
 import type { Dossier } from "../engine/dossier";
+import { DALVIK } from "../engine/jadx";
 import { useLoaded } from "../lib/useLoaded";
 import { Button, ErrorCard, Tooltip } from "../components/kit";
 import { errorMessage } from "../lib/guards";
@@ -305,7 +306,7 @@ export function Graph({ addr }: { readonly addr: string }): ReactElement {
   };
   const graph = useLoaded(load, `${program.name}:${addr}:graph:${wb.s.revision}`);
   if (graph.kind === "loading") return <div style={{ padding: 16, color: p.muted }}>Drawing the graph…</div>;
-  if (graph.kind === "failed") return <div style={{ padding: 16 }}><ErrorCard title="Couldn't draw the graph" detail="Ghidra didn't return this function's blocks. The assembly view still works." raw={graph.message} /></div>;
-  if (!graph.value) return <div style={{ padding: 16, color: p.muted }}>The graph shows once Ghidra has finished reading this file.</div>;
+  if (graph.kind === "failed") return <div style={{ padding: 16 }}><ErrorCard title="Couldn't draw the graph" detail={`${program.engine} didn't return this function's blocks. The assembly view still works.`} raw={graph.message} /></div>;
+  if (!graph.value) return <div style={{ padding: 16, color: p.muted }}>{program.arch === DALVIK ? "Graphs aren't available for Android apps yet. The Java and bytecode views show the whole method." : "The graph shows once Ghidra has finished reading this file."}</div>;
   return <FlowGraph fn={addr} dossier={graph.value.dossier} assembly={graph.value.assembly} />;
 }

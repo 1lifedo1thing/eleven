@@ -53,7 +53,7 @@ const NOTHING_YET = (): Promise<never> => Promise.reject(new Error("This file is
 function pendingProgram(target: Target): Program {
   return {
     id: "", path: target.path, origin: target.original, name: target.name, arch: target.arch, total: 0,
-    functions: [], strings: [], imports: [], segments: [], evidence: "",
+    functions: [], strings: [], imports: [], segments: [], evidence: "", engine: "Eleven",
     log: () => [], code: NOTHING_YET, refs: NOTHING_YET, dossier: null, hex: NOTHING_YET, focusLine: () => -1, retype: null,
   };
 }

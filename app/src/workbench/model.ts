@@ -1,3 +1,4 @@
+import type { ApkFiles } from "../engine/apk";
 import type { CodeType } from "../engine/codeTypes";
 import type { ModelPage } from "../gpu/types";
 import type { Tool } from "./dockOrder";
@@ -25,6 +26,7 @@ export type Tab =
   | { readonly kind: "debug"; readonly id: string; readonly preview: boolean }
   | { readonly kind: "listing"; readonly id: string; readonly preview: boolean }
   | { readonly kind: "source"; readonly id: string; readonly file: string; readonly preview: boolean }
+  | { readonly kind: "resource"; readonly id: string; readonly file: string; readonly preview: boolean }
   | { readonly kind: "tool"; readonly id: string; readonly tool: Tool; readonly preview: boolean };
 
 export type TabTarget =
@@ -38,6 +40,7 @@ export type TabTarget =
   | { readonly kind: "debug" }
   | { readonly kind: "listing" }
   | { readonly kind: "source"; readonly file: string }
+  | { readonly kind: "resource"; readonly file: string }
   | { readonly kind: "tool"; readonly tool: Tool };
 
 export type Pane = { readonly tabs: readonly Tab[]; readonly active: number };
@@ -71,6 +74,8 @@ export type Program = {
   readonly imports: readonly TableRow[];
   readonly segments: readonly TableRow[];
   readonly evidence: string;
+  /** What reads the file (Ghidra, Rizin, jadx), named in loading and error messages. */
+  readonly engine: string;
   readonly log: () => readonly string[];
   readonly code: (addr: string, view: "pseudo" | "asm") => Promise<string>;
   readonly refs: (addr: string) => Promise<Refs>;
@@ -84,6 +89,8 @@ export type Program = {
   readonly source?: (file: string) => Promise<SourceText>;
   /** Source files with no functions of their own, so the file tree still lists them. */
   readonly bareFiles?: readonly string[];
+  /** The app's other files (manifest, resources, assets, native libraries), for engines that unpack an app (jadx). */
+  readonly resources?: ApkFiles;
   /** The functions that use the string at an address, for engines that can follow references to data. */
   readonly codeUsing?: (addr: string) => Promise<readonly string[]>;
 };

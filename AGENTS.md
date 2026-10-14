@@ -35,6 +35,7 @@ Any ACP agent works through REA (Ghidra headless) and Eleven's own tools.
 
 - REA must be 6.x. Eleven finds a checkout next to this repo (`../rea`), the copy bundled in Eleven.app, or `ELEVEN_REA`. Older `rea` builds on PATH refuse Ghidra on Apple Silicon.
 - Ghidra 12.x, found in `~/.local/share`, `~/Applications` or `GHIDRA_INSTALL_DIR`. The JDK is found automatically.
+- Android apps read through jadx (never Ghidra); apktool, when installed, gives smali. `.xapk`/`.apks`/`.zip` split bundles open their base APK with the splits beside it.
 - Pinned npx agent versions can fail behind an npm `before` quarantine, so Eleven unpins them.
 
 ## Rules

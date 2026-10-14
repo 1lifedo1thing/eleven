@@ -158,6 +158,8 @@ function targetOf(b: Bench, subject: Subject): TabTarget | null {
           return { kind: "listing" };
         case "source":
           return { kind: "source", file: tab.file };
+        case "resource":
+          return { kind: "resource", file: tab.file };
         case "tool":
           return null;
         default: {

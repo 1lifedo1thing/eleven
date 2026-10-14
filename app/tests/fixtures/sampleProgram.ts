@@ -223,6 +223,7 @@ export const SAMPLE_PROGRAM: Program = {
   imports: IMPORTS,
   segments: SEGMENTS,
   evidence: "ev_7475c05a…",
+  engine: "Ghidra",
   log: () => LOG,
   code: (addr, view) => Promise.resolve(sampleCode(addr, view)),
   dossier: (addr) => Promise.resolve(addr === "0x100000960" ? ENTRY_BLOCKS : NO_BLOCKS),

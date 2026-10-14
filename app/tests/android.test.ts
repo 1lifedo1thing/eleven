@@ -42,7 +42,7 @@ test("an APK opens through jadx: methods, Java, bytecode, native methods and the
   expect(java).toContain("public String greet() {");
   expect(java).toContain("Hello, ");
   const bytecode = await program.code(shout.addr, "asm");
-  expect(bytecode).toMatch(/^0x[0-9a-f]+\s/m);
+  expect(bytecode).toMatch(/^0x[0-9a-f]+\s|^\.method /m);
 
   expect((await program.refs(greet.addr)).callees).toContain(shout.addr);
   expect((await program.refs(shout.addr)).callers.map((caller) => caller.addr)).toContain(greet.addr);

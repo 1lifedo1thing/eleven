@@ -167,7 +167,7 @@ function Table({ list }: { readonly list: ListKind }): ReactElement {
         <div style={{ width: FIRST_COLUMN, flexShrink: 0, paddingTop: 6, paddingBottom: 6, paddingLeft: 8, paddingRight: 8 }}>{first}</div>
         <div style={{ paddingTop: 6, paddingBottom: 6, paddingLeft: 8, paddingRight: 8 }}>{second}</div>
       </div>
-      {rows.length === 0 && <Centered><EmptyState title={`No ${list} in this file`} hint="Ghidra found none. Ask the agent to look another way, like reading the bytes." /></Centered>}
+      {rows.length === 0 && <Centered><EmptyState title={`No ${list} in this file`} hint={`${program.engine} found none. Ask the agent to look another way, like reading the bytes.`} /></Centered>}
       {rows.length > 0 && <virtual-list itemCount={rows.length} windowStart={shown.start} estimatedItemHeight={ROW_HEIGHT} onVisibleRange={shown.onVisibleRange} style={{ flexGrow: 1, minHeight: 0, paddingBottom: 24 }}>
         {rows.slice(shown.start, shown.end).map((row, ix) => (
           <div key={shown.start + ix} {...subjectMenu(bench, rowSubject(list, row, program[list][shown.start + ix]))} role="row" aria-label={row.b} style={{ display: "flex", userSelect: "text", borderTopWidth: 1, borderColor: p.raised2 }}>

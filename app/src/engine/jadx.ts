@@ -8,6 +8,7 @@ import { promisify } from "node:util";
 import { isRecord, stringField, type JsonRecord } from "../lib/guards";
 import { cacheDir } from "../settings/actions";
 import type { Caller, Fn, Refs, SourceText, TableRow } from "../workbench/model";
+import { apkFiles, type ApkFiles, readResourceStrings, smaliClass, smaliFile, smaliMethod } from "./apk";
 import type { Procedure } from "./procedures";
 
 const run = promisify(execFile);
@@ -36,6 +37,8 @@ type JadxIndex = {
   readonly natives: readonly TableRow[];
   /** Each class file's top-level class, which jadx needs to re-read it as bytecode. */
   readonly tops: Readonly<Record<string, string>>;
+  /** Class files with no code of their own (interfaces, constants, R), which the method list alone would hide. */
+  readonly bare: readonly string[];
 };
 
 type Graph = { readonly callers: ReadonlyMap<string, readonly string[]>; readonly callees: ReadonlyMap<string, readonly string[]> };
@@ -44,6 +47,10 @@ export type JadxApp = {
   readonly functions: readonly Fn[];
   /** native methods: where the Java side calls into the app's own .so libraries. */
   readonly natives: readonly TableRow[];
+  readonly bare: readonly string[];
+  /** String resources by name. */
+  readonly strings: readonly TableRow[];
+  readonly files: ApkFiles;
   readonly code: (addr: string, view: "pseudo" | "asm") => Promise<string>;
   readonly refs: (addr: string) => Promise<Refs>;
   readonly source: (file: string) => Promise<SourceText>;
@@ -139,19 +146,24 @@ async function buildIndex(dir: string): Promise<JadxIndex> {
     if (entry.inner !== true) tops[file] = name;
   }
   const into: Collected = { methods: [], natives: [] };
+  const bare: string[] = [];
   const files = Object.keys(tops);
   for (let at = 0; at < files.length; at += OPEN_FILES) {
     const batch = files.slice(at, at + OPEN_FILES);
     const parsed = await Promise.all(batch.map((file) => readClass(join(dir, "sources", file))));
     parsed.forEach((node, ix) => {
-      if (isRecord(node)) collect(node, batch[ix] ?? "", raw, "classes.dex", into);
+      if (!isRecord(node)) return;
+      const file = batch[ix] ?? "";
+      const before = into.methods.length;
+      collect(node, file, raw, "classes.dex", into);
+      if (into.methods.length === before) bare.push(file.replace(/\.json$/, ".java"));
     });
   }
-  return { methods: into.methods, natives: into.natives, tops };
+  return { methods: into.methods, natives: into.natives, tops, bare };
 }
 
 function isIndex(value: unknown): value is JadxIndex {
-  return isRecord(value) && Array.isArray(value.methods) && Array.isArray(value.natives) && isRecord(value.tops);
+  return isRecord(value) && Array.isArray(value.methods) && Array.isArray(value.natives) && isRecord(value.tops) && Array.isArray(value.bare);
 }
 
 async function decompile(jadx: string, path: string, dir: string): Promise<void> {
@@ -305,6 +317,10 @@ class JadxSession {
     return this.index.natives;
   }
 
+  bare(): readonly string[] {
+    return this.index.bare;
+  }
+
   private classFile(file: string, view: "pseudo" | "asm"): Promise<unknown> {
     const id = `${view}:${file}`;
     const known = this.classes.get(id);
@@ -338,9 +354,24 @@ class JadxSession {
     return this.readJson(out);
   }
 
+  /** The method as smali when apktool is installed and reads the app, else null for jadx's own bytecode. */
+  private async smali(addr: string, method: JadxMethod): Promise<string | null> {
+    const owner = method.key.slice(0, method.key.length - method.signature.length - 1);
+    try {
+      const text = await smaliClass(this.path, join(dirname(this.dir), "smali"), smaliFile(BigInt(addr) >> 32n, owner));
+      return text === null ? null : smaliMethod(text, method.signature) || null;
+    } catch {
+      return null;
+    }
+  }
+
   async code(addr: string, view: "pseudo" | "asm"): Promise<string> {
     const method = this.byAddr.get(addr);
     if (!method) return "";
+    if (view === "asm") {
+      const smali = await this.smali(addr, method);
+      if (smali) return smali;
+    }
     const owner = findClass(await this.classFile(method.file, view), method.owner);
     const found = records(owner, "methods").find((entry) => stringField(entry, "signature") === method.signature);
     return found ? methodText(found, view === "asm") : "";
@@ -370,10 +401,10 @@ class JadxSession {
 }
 
 declare global {
-  var elevenJadx: Map<string, Promise<JadxSession>> | undefined;
+  var elevenJadxApps: Map<string, Promise<JadxSession>> | undefined;
 }
 
-const sessions = (globalThis.elevenJadx ??= new Map());
+const sessions = (globalThis.elevenJadxApps ??= new Map());
 
 /** Opens an APK or .dex with jadx: Java and Kotlin as readable code, Dalvik bytecode, and the call graph. */
 export async function openJadx(path: string, sha256: string): Promise<JadxApp> {
@@ -387,9 +418,14 @@ export async function openJadx(path: string, sha256: string): Promise<JadxApp> {
     pending.catch(() => sessions.delete(sha256));
   }
   const session = await pending;
+  const dir = join(cacheDir(), sha256, "jadx");
+  const [strings, files] = await Promise.all([readResourceStrings(dir), apkFiles(path, dir, join(cacheDir(), sha256, "apk"))]);
   return {
     functions: session.functions(),
     natives: session.natives(),
+    bare: session.bare(),
+    strings,
+    files,
     code: (addr, view) => session.code(addr, view),
     refs: (addr) => session.refs(addr),
     source: (file) => session.source(file),

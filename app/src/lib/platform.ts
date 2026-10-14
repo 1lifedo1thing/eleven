@@ -209,6 +209,16 @@ export function chooseSavePath(prompt: string, name: string, folder: string): Pr
   return firstLine("zenity", ["--file-selection", "--save", "--confirm-overwrite", `--title=${clean}`, `--filename=${join(folder, name)}`]);
 }
 
+/** How to list a zip's entries: unzip, or the tar.exe Windows ships, since Windows has no unzip. */
+export function zipListing(path: string): readonly [string, readonly string[]] {
+  return OS === "windows" ? ["tar.exe", ["-tf", path]] : ["unzip", ["-Z1", path]];
+}
+
+/** How to unpack one zip entry into a folder, keeping its path inside the zip. */
+export function zipExtract(path: string, entry: string, into: string): readonly [string, readonly string[]] {
+  return OS === "windows" ? ["tar.exe", ["-xf", path, "-C", into, entry]] : ["unzip", ["-o", "-q", path, entry, "-d", into]];
+}
+
 /** A program's file name on this OS: `java` here, `java.exe` on Windows. */
 export function exe(name: string): string {
   return OS === "windows" ? `${name}.exe` : name;

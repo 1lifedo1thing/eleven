@@ -16,6 +16,7 @@ import { currentMatch, FindBar, lineMatcher } from "./Find";
 import { arrowSvg, LANE_WIDTH, laneCount, type LanePiece, layoutJumps, piecesByLine } from "./arrows";
 import type { HexRow } from "./model";
 import { type Bench, useBench } from "./parts";
+import { DALVIK } from "../engine/jadx";
 import { formatOperand, isOperandFormat, type Lookup, type Symbolic } from "../engine/operands";
 import type { LineRange } from "./state";
 import { lineAddress, splitWords, type Subject, type Token, wordAddress } from "./subject";
@@ -333,11 +334,11 @@ export function CodeLines({ addr, view }: { readonly addr: string; readonly view
   const code = useLoaded(() => program.code(addr, view), `${program.name}:${addr}:${view}:${wb.s.revision}`);
   switch (code.kind) {
     case "loading":
-      return <div style={{ padding: 16, color: p.muted }}>{`Ghidra is reading ${nameOf(addr)}. The first open of a file takes a few seconds.`}</div>;
+      return <div style={{ padding: 16, color: p.muted }}>{`${program.engine} is reading ${nameOf(addr)}. The first open of a file takes a few seconds.`}</div>;
     case "failed":
       return (
         <div style={{ padding: 16 }}>
-          <ErrorCard title={`Couldn't load ${nameOf(addr)}`} detail={view === "pseudo" ? "Ghidra couldn't decompile it. The assembly view still shows every instruction." : "REA couldn't read its instructions. Open the file again, or check Setup."} raw={code.message} />
+          <ErrorCard title={`Couldn't load ${nameOf(addr)}`} detail={view === "pseudo" ? `${program.engine} couldn't decompile it. The ${program.arch === DALVIK ? "bytecode" : "assembly"} view still shows every instruction.` : `${program.engine} couldn't read its instructions. Open the file again, or check Setup.`} raw={code.message} />
         </div>
       );
     case "ready":

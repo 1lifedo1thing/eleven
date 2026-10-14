@@ -2,6 +2,7 @@ import { type ReactElement, useState } from "react";
 
 import { chatTitle } from "../chat/useChat";
 import { Tooltip } from "../components/kit";
+import { DALVIK } from "../engine/jadx";
 import { useTheme } from "../theme";
 import { Spacer } from "../components/ui";
 import { CodeLines } from "./CodeLines";
@@ -20,6 +21,7 @@ import { useSize } from "../lib/useSize";
 import { TYPING } from "../lib/shortcuts";
 import { goTo } from "./actions";
 import { IconButton, MONO_STYLE, SegItem, useBench } from "./parts";
+import { ResourceView } from "./ResourceView";
 import { TabBar } from "./TabBar";
 import { fillsSpace, ToolBody } from "./Tools";
 import { showAddress } from "../settings/look";
@@ -29,6 +31,12 @@ const MODES: readonly { readonly mode: CodeMode; readonly label: string; readonl
   { mode: "pseudo", label: "Pseudocode", icon: "pseudocode", tip: "The function rebuilt as C-like code. Easiest to read, but a guess." },
   { mode: "graph", label: "Graph", icon: "graph", tip: "The function's branches and loops as connected blocks" },
   { mode: "hex", label: "Hex", icon: "hex", tip: "The raw bytes in the file at this address" },
+];
+
+/** Android methods come from jadx (Java) and apktool (smali); there are no blocks or file bytes to show. */
+const DALVIK_MODES: readonly { readonly mode: CodeMode; readonly label: string; readonly icon: string; readonly tip: string }[] = [
+  { mode: "asm", label: "Smali", icon: "assembly", tip: "The method's Dalvik instructions as smali, the way apktool prints them" },
+  { mode: "pseudo", label: "Java", icon: "pseudocode", tip: "The method decompiled to Java by jadx" },
 ];
 
 /** Below this pane width the view switch shows only icons. */
@@ -58,15 +66,16 @@ function GoTo({ addr }: { readonly addr: string }): ReactElement {
 
 function ModeBar({ pane, addr, view, width }: { readonly pane: number; readonly addr: string; readonly view: CodeMode; readonly width: number }): ReactElement {
   const { p } = useTheme();
-  const { wb, nameOf } = useBench();
+  const { wb, nameOf, program } = useBench();
   const words = width === 0 || width >= WORDS_FROM;
+  const modes = program.arch === DALVIK ? DALVIK_MODES : MODES;
   const marked = wb.s.bookmarks.some((b) => b.addr === addr);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, height: 34, flexShrink: 0, paddingLeft: 10, paddingRight: 8, overflow: "hidden" }}>
       <GoTo addr={addr} />
       <Spacer />
       <div role="radiogroup" aria-label="View" style={{ display: "flex", flexShrink: 0, gap: 2, padding: 2, borderRadius: 8, backgroundColor: p.fill }}>
-        {MODES.map((m) => (
+        {modes.map((m) => (
           <Tooltip key={m.mode} label={words ? m.tip : `${m.label}: ${m.tip}`}>
             <div style={{ display: "flex" }}>
               <SegItem label={m.label} name={`${m.label} view`} icon={m.icon} words={words} on={m.mode === view} onBg={p.sel2} padding={words ? 9 : 6} onClick={() => wb.setView(pane, m.mode)} />
@@ -75,7 +84,7 @@ function ModeBar({ pane, addr, view, width }: { readonly pane: number; readonly 
         ))}
       </div>
       {view === "asm" && <IconButton icon="split" label="Pseudocode beside it, lines linked" on={wb.s.linked} color={wb.s.linked ? p.text : p.muted} size={26} iconSize={15} onClick={() => wb.besidePseudo(addr)} />}
-      {view === "asm" && <IconButton icon="hex" label="Show bytes" on={wb.s.showBytes} color={wb.s.showBytes ? p.text : p.muted} size={26} iconSize={15} onClick={() => wb.patch({ showBytes: !wb.s.showBytes })} />}
+      {view === "asm" && program.arch !== DALVIK && <IconButton icon="hex" label="Show bytes" on={wb.s.showBytes} color={wb.s.showBytes ? p.text : p.muted} size={26} iconSize={15} onClick={() => wb.patch({ showBytes: !wb.s.showBytes })} />}
       <IconButton icon="bookmark" on={marked} color={marked ? p.data : p.muted} label="Bookmark" size={26} iconSize={15} onClick={() => wb.toggleBookmark({ addr, label: nameOf(addr) })} />
     </div>
   );
@@ -149,6 +158,8 @@ function Body({ tab }: { readonly tab: Tab | undefined }): ReactElement {
       return <Listing />;
     case "source":
       return <SourceView file={tab.file} />;
+    case "resource":
+      return <ResourceView file={tab.file} />;
     case "tool":
       return <ToolBody tool={tab.tool} />;
     default: {

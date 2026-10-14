@@ -65,7 +65,7 @@ export function References(): ReactElement {
   const refs = useLoaded<Refs>(() => program.refs(focusAddr), `${program.name}:${focusAddr}:refs`);
   if (wb.s.refsOf) return <ReferencesTo addr={wb.s.refsOf} />;
   if (refs.kind !== "ready") {
-    if (refs.kind === "failed") return <ErrorCard title="Couldn't find references" detail="Ghidra couldn't list the callers. Try again after the file finishes loading." raw={refs.message} />;
+    if (refs.kind === "failed") return <ErrorCard title="Couldn't find references" detail={`${program.engine} couldn't list the callers. Try again after the file finishes loading.`} raw={refs.message} />;
     return <div style={{ marginTop: 4, color: p.muted }}>Finding references…</div>;
   }
   return (
