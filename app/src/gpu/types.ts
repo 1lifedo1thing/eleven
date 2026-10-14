@@ -6,13 +6,19 @@ export type LoadedBy = { readonly symbol: string; readonly note: string };
 
 export type ShaderFunction = {
   readonly name: string;
+  /** The name the code object uses, mangled for C++ kernels; the same as `name` for Metal. */
+  readonly symbol: string;
   readonly kind: FunctionKind;
   readonly ir: string;
   readonly bindings: readonly Binding[];
   readonly loadedBy: LoadedBy | null;
+  /** What the GPU needs to run it: registers, shared memory, code size, the chips it was built for. */
+  readonly stats: readonly Binding[];
 };
 
-export type ShaderLibrary = { readonly name: string; readonly format: string; readonly functions: readonly ShaderFunction[] };
+export type GpuApi = "metal" | "cuda" | "hip";
+
+export type ShaderLibrary = { readonly name: string; readonly format: string; readonly api: GpuApi; readonly functions: readonly ShaderFunction[] };
 
 export type Tensor =
   | { readonly kind: "image"; readonly name: string; readonly shape: readonly number[] }

@@ -45,6 +45,11 @@ export async function exportFunction(program: Program, addr: string, view: "pseu
   return write(program, `${safe(name)}.${view === "pseudo" ? "c" : "s"}`, code);
 }
 
+/** Writes a GPU kernel rewritten by the agent to a file in Downloads/Eleven and reveals it. */
+export function exportKernel(program: Program, name: string, extension: string, code: string): Promise<string> {
+  return write(program, `${safe(name)}.${extension}`, code);
+}
+
 function entries(reply: unknown, key: string): readonly ObjcEntry[] {
   const list = isRecord(reply) && Array.isArray(reply[key]) ? reply[key] : [];
   return list.flatMap((item) => {

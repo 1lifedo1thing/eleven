@@ -2,15 +2,18 @@ import { type ReactElement, useState } from "react";
 
 import { ModelView } from "../gpu/ModelView";
 import { pagesOf } from "../gpu/models/facts";
-import type { ModelPage } from "../gpu/types";
+import type { LoadedBy, ModelPage, ShaderFunction, ShaderLibrary } from "../gpu/types";
 import { ProfileView } from "../gpu/ProfileView";
 import { ShaderView } from "../gpu/ShaderView";
-import { useFunctionIr, useLoadedBy } from "../gpu/useGpu";
+import { type Loaded, useFunctionIr, useLoadedBy } from "../gpu/useGpu";
 import { errorMessage } from "../lib/guards";
+import { TYPING } from "../lib/shortcuts";
 import { useTheme } from "../theme";
 import { Icon } from "../components/ui";
 import { ask } from "./actions";
+import { shaderPlace, useKernelExtras } from "./KernelBar";
 import { ELLIPSIS, HOVER, MONO_STYLE, useBench } from "./parts";
+import { shortName } from "../gpu/look";
 
 function Note({ text }: { readonly text: string }): ReactElement {
   const { p } = useTheme();
@@ -25,13 +28,28 @@ export function ShaderTab({ library, name }: { readonly library: string; readonl
   const lib = gpuData.kind === "ready" ? gpuData.value.libraries.find((l) => l.name === library) : undefined;
   const fn = lib?.functions.find((f) => f.name === name);
   if (!lib || !fn) return <Note text={gpuData.kind === "loading" ? "Reading the shader library…" : `${name} isn't in ${library} anymore.`} />;
-  const onAsk = (): void => ask(bench, `Why might the ${fn.kind} shader ${name} in ${library} be slow? Read its AIR and say what to change, in plain terms.`);
+  const reads = lib.api === "cuda" ? "its PTX and register use" : lib.api === "hip" ? "its registers, local memory and arguments" : "its AIR";
+  const what = lib.api === "metal" ? `${fn.kind} shader` : `${lib.api === "cuda" ? "CUDA" : "HIP"} kernel`;
+  const onAsk = (): void => ask(bench, `Why might the ${what} ${name} in ${library} be slow? Read ${reads} and say what to change, in plain terms.`);
   const onOpen = (symbol: string): void => {
     const addr = bench.addrOf(symbol);
     if (addr) bench.openFn(addr, false);
     else bench.wb.notify(`Couldn't find ${symbol} in this app's functions.`, null);
   };
-  return <ShaderView fn={fn} stage={lib.format} ir={ir} loadedBy={loadedBy} onOpen={onOpen} onAsk={onAsk} />;
+  return <KernelTab key={`${library}:${name}`} lib={lib} fn={fn} ir={ir} loadedBy={loadedBy} onOpen={onOpen} onAsk={onAsk} />;
+}
+
+/** A shader or kernel; CUDA kernels also get View as, Explain and Beside PTX. */
+function KernelTab({ lib, fn, ir, loadedBy, onOpen, onAsk }: {
+  readonly lib: ShaderLibrary;
+  readonly fn: ShaderFunction;
+  readonly ir: Loaded<string>;
+  readonly loadedBy: Loaded<LoadedBy | null>;
+  readonly onOpen: (symbol: string) => void;
+  readonly onAsk: () => void;
+}): ReactElement {
+  const extras = useKernelExtras(lib, fn, ir);
+  return <ShaderView fn={fn} stage={lib.format} api={lib.api} ir={ir} loadedBy={loadedBy} onOpen={onOpen} onAsk={onAsk} ask={shaderPlace(lib, fn)} {...(extras ? { extras } : {})} />;
 }
 
 export function ModelTab({ name, page, tensor }: { readonly name: string; readonly page: ModelPage; readonly tensor: string | null }): ReactElement {
@@ -127,6 +145,35 @@ function Heading({ text, first }: { readonly text: string; readonly first: boole
   return <div style={{ paddingTop: first ? 4 : 14, paddingBottom: 6, paddingLeft: 8, paddingRight: 8, fontSize: 11.5, color: p.muted }}>{text}</div>;
 }
 
+/** Libraries past this many functions get a filter, since a CUDA or HIP build can hold thousands of kernels. */
+const SHOWN_FUNCTIONS = 40;
+
+function LibraryRows({ lib, isOpen }: { readonly lib: ShaderLibrary; readonly isOpen: (name: string) => boolean }): ReactElement {
+  const { p } = useTheme();
+  const { wb } = useBench();
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const matches = q ? lib.functions.filter((fn) => fn.name.toLowerCase().includes(q)) : lib.functions;
+  const many = lib.functions.length > SHOWN_FUNCTIONS;
+  const hidden = matches.length - SHOWN_FUNCTIONS;
+  const note = (fn: ShaderFunction): string => (lib.api === "metal" ? fn.kind : fn.stats.find((s) => s.slot === "Registers" || s.slot === "Vector registers")?.type.split(" ")[0] ?? "");
+  return (
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      <Row icon="gpu" label={lib.name} note={many ? lib.functions.length.toLocaleString("en-US") : ""} mono={false} indent={false} on={false} onOpen={() => lib.functions[0] && wb.open({ kind: "shader", library: lib.name, name: lib.functions[0].name }, false)} />
+      {many && (
+        <div style={{ display: "flex", alignItems: "center", height: 28, marginTop: 2, marginBottom: 4, marginLeft: 26, paddingLeft: 8, paddingRight: 8, borderRadius: 7, backgroundColor: p.fill }}>
+          <input {...TYPING} value={query} placeholder={`Filter ${lib.functions.length.toLocaleString("en-US")} kernels`} aria-label={`Filter ${lib.name}`} onChange={(e) => setQuery(e.value ?? "")} style={{ flexGrow: 1, minWidth: 0, fontSize: 12, color: p.text3 }} />
+        </div>
+      )}
+      {matches.slice(0, SHOWN_FUNCTIONS).map((fn) => (
+        <Row key={fn.name} icon={null} label={shortName(fn.name)} note={note(fn)} mono indent on={isOpen(fn.name)} onOpen={() => wb.open({ kind: "shader", library: lib.name, name: fn.name }, true)} />
+      ))}
+      {hidden > 0 && <div style={{ paddingTop: 2, paddingBottom: 6, paddingLeft: 34, fontSize: 11.5, color: p.faint }}>{`${hidden.toLocaleString("en-US")} more. Type to narrow them down.`}</div>}
+      {q && matches.length === 0 && <div style={{ paddingTop: 2, paddingBottom: 6, paddingLeft: 34, fontSize: 11.5, color: p.faint }}>{`No kernels match “${query.trim()}”.`}</div>}
+    </div>
+  );
+}
+
 /** The GPU items for the sidebar, framed by the caller; null when the target has none. */
 export function GpuSection({ frame }: { readonly frame: (count: number, body: ReactElement) => ReactElement }): ReactElement | null {
   const { gpuData, wb, chat } = useBench();
@@ -151,19 +198,12 @@ export function GpuSection({ frame }: { readonly frame: (count: number, body: Re
   if (libraries.length === 0 && models.length === 0 && !app) return null;
   return frame(libraries.length + models.length + recordings.length, (
     <div style={{ display: "flex", flexDirection: "column" }}>
-      <Heading text="Inside this app" first />
-      {libraries.map((lib) => (
-        <div key={lib.name} style={{ display: "flex", flexDirection: "column" }}>
-          <Row icon="gpu" label={lib.name} note="" mono={false} indent={false} on={false} onOpen={() => lib.functions[0] && wb.open({ kind: "shader", library: lib.name, name: lib.functions[0].name }, false)} />
-          {lib.functions.slice(0, 40).map((fn) => (
-            <Row key={fn.name} icon={null} label={fn.name} note={fn.kind} mono indent on={isOpen("shader", fn.name)} onOpen={() => wb.open({ kind: "shader", library: lib.name, name: fn.name }, true)} />
-          ))}
-        </div>
-      ))}
+      <Heading text={app ? "Inside this app" : "In this file"} first />
+      {libraries.map((lib) => <LibraryRows key={lib.name} lib={lib} isOpen={(name) => isOpen("shader", name)} />)}
       {models.map((model) => (
         <Row key={model.name} icon="model" label={model.name} note={model.layers.some((l) => l.op === "runs code") ? "runs code" : ""} mono={false} indent={false} on={isOpen("model", model.name)} onOpen={() => wb.open({ kind: "model", name: model.name }, false)} />
       ))}
-      <Heading text="Recordings" first={false} />
+      {(app || recordings.length > 0) && <Heading text="Recordings" first={false} />}
       {recordings.map((recording) => (
         <Row key={recording.title} icon="profile" label={recording.title} note="" mono={false} indent={false} on={isOpen("profile", recording.title)} onOpen={() => wb.open({ kind: "profile", title: recording.title }, false)} />
       ))}

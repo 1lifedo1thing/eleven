@@ -5,13 +5,13 @@ import { useSettings } from "../settings/store";
 import { type Palette, useTheme } from "../theme";
 import type { Span } from "./highlight";
 
-export type Syntax = "c" | "asm";
+export type Syntax = "c" | "asm" | "ptx";
 
 type Part =
   | { readonly kind: "text"; readonly text: string; readonly color: string }
   | { readonly kind: "link"; readonly text: string };
 
-type Role = "comment" | "string" | "keyword" | "type" | "link" | "call" | "scope" | "data" | "number" | "address" | "mnemonic" | "register";
+type Role = "comment" | "string" | "keyword" | "type" | "link" | "call" | "scope" | "data" | "number" | "address" | "mnemonic" | "register" | "label" | "predicate" | "variable" | "memory";
 
 const C_KEYWORDS = "if|else|while|do|for|return|goto|break|continue|switch|case|default|sizeof|struct|union|enum|typedef|const|unsigned|signed|volatile|static|extern|true|false|NULL|self|super|nil";
 const JAVA_KEYWORDS = "package|import|public|private|protected|class|interface|extends|implements|final|abstract|native|synchronized|transient|new|this|throws|throw|try|catch|finally|instanceof|null";
@@ -42,12 +42,32 @@ const ASM_RULES: readonly (readonly [Role, string])[] = [
   ["number", "#?-?\\b(?:0x[0-9a-fA-F]+|\\d+)\\b"],
 ];
 
+/** NVIDIA PTX: opcodes like ld.param.u64, %registers, @%p predicates, $L__ labels, .directives and [memory] operands. */
+const PTX_RULES: readonly (readonly [Role, string])[] = [
+  ["comment", "\\/\\/.*$|\\/\\*.*?(?:\\*\\/|$)"],
+  ["string", "\"(?:[^\"\\\\]|\\\\.)*\""],
+  ["label", "\\$[\\w$]+:?"],
+  ["predicate", "@!?%\\w+"],
+  ["variable", "%[a-z]+\\d*(?:\\.[xyzw])?(?:<\\d+>)?"],
+  ["memory", "\\[[^\\]]*\\]"],
+  ["mnemonic", "(?<=^\\s*(?:@!?%\\w+\\s+)?)[a-z][\\w]*(?:\\.[\\w]+)*"],
+  ["type", "\\.[a-z_][\\w]*"],
+  ["number", "-?\\b(?:0[xX][0-9a-fA-F]+|0[fFdD][0-9a-fA-F]+|\\d+(?:\\.\\d+)?)\\b"],
+];
+
 function compile(rules: readonly (readonly [Role, string])[]): RegExp {
   return new RegExp(rules.map(([, source]) => `(${source})`).join("|"), "g");
 }
 
 const C_TOKENS = compile(C_RULES);
 const ASM_TOKENS = compile(ASM_RULES);
+const PTX_TOKENS = compile(PTX_RULES);
+
+const GRAMMARS: Readonly<Record<Syntax, { readonly rules: readonly (readonly [Role, string])[]; readonly tokens: RegExp }>> = {
+  c: { rules: C_RULES, tokens: C_TOKENS },
+  asm: { rules: ASM_RULES, tokens: ASM_TOKENS },
+  ptx: { rules: PTX_RULES, tokens: PTX_TOKENS },
+};
 
 function roleColor(role: Role, p: Palette, c: Colors): string {
   switch (role) {
@@ -73,6 +93,14 @@ function roleColor(role: Role, p: Palette, c: Colors): string {
       return p.gutter;
     case "register":
       return p.text2;
+    case "label":
+      return c.call;
+    case "predicate":
+      return p.error;
+    case "variable":
+      return p.data;
+    case "memory":
+      return c.string;
     default: {
       const unhandled: never = role;
       return unhandled;
@@ -88,10 +116,10 @@ function partFor(match: RegExpMatchArray, rules: readonly (readonly [Role, strin
 }
 
 export function tokenize(line: string, syntax: Syntax, p: Palette, c: Colors = syntaxFor("Eleven", p)): readonly Part[] {
-  const rules = syntax === "c" ? C_RULES : ASM_RULES;
+  const { rules, tokens } = GRAMMARS[syntax];
   const parts: Part[] = [];
   let last = 0;
-  for (const match of line.matchAll(new RegExp(syntax === "c" ? C_TOKENS : ASM_TOKENS))) {
+  for (const match of line.matchAll(new RegExp(tokens))) {
     const at = match.index ?? 0;
     if (match[0].length === 0) continue;
     if (at > last) parts.push({ kind: "text", text: line.slice(last, at), color: p.text3 });

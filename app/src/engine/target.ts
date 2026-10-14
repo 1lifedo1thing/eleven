@@ -57,7 +57,7 @@ function bundleExecutable(app: string): string {
 
 function kindOf(name: string, isApp: boolean): TargetKind {
   if (isApp) return "app";
-  if (/\.(metallib|spv|air)$/i.test(name)) return "gpu";
+  if (/\.(metallib|spv|air|ptx|cubin|fatbin|hipfb|hsaco|co)$/i.test(name)) return "gpu";
   if (/\.(mlmodelc|gguf|safetensors|onnx|pt|tflite)$/i.test(name)) return "model";
   return "binary";
 }

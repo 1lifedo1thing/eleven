@@ -2,6 +2,7 @@ import { type ReactElement, useState } from "react";
 
 import { pageCount, pageIcon, pageLabel, pagesOf, tensorGroups } from "../../gpu/models/facts";
 import type { ModelInfo } from "../../gpu/types";
+import { GpuSection } from "../GpuTabs";
 import { useBench } from "../parts";
 import { Faint, SideRow, SideSection } from "./parts";
 
@@ -22,6 +23,15 @@ function useModelTab(): { readonly page: string | null; readonly tensor: string 
   const pane = wb.s.panes[wb.s.focus];
   const tab = pane?.tabs[pane.active];
   return tab?.kind === "model" ? { page: tab.page, tensor: tab.tensor } : { page: null, tensor: null };
+}
+
+/** A kernel or shader file's functions, in place of a binary's sections; a big library gets a filter. */
+export function Kernels(): ReactElement {
+  return (
+    <GpuSection frame={(count, body) => (
+      <SideSection id="gpu" title="Kernels" count={count > 0 ? `${count}` : ""}>{body}</SideSection>
+    )} />
+  );
 }
 
 /** The model's pages, in place of a binary's listing, strings and segments. */

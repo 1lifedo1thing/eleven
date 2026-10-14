@@ -41,7 +41,7 @@ function isApp(path: string): boolean {
 
 export function kindOf(path: string): FileKind {
   if (isApp(path)) return "app";
-  if (/\.(metallib|spv|air)$/i.test(path)) return "gpu";
+  if (/\.(metallib|spv|air|ptx|cubin|fatbin|hipfb|hsaco|co)$/i.test(path)) return "gpu";
   if (/\.(mlmodelc|gguf|safetensors|onnx|pt|tflite)$/i.test(path)) return "model";
   return "binary";
 }

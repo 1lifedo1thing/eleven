@@ -6,6 +6,7 @@ import { prepareTarget, type Target } from "../engine/target";
 import { findLoaders } from "./loaders";
 import { listRuns, readGpuRun, recordGpuRun, runTitle } from "./trace";
 import { readMetalLibrary } from "./metal";
+import { cudaKernelIr, readComputeLibraries } from "./compute";
 import { MODEL_FILE, readModel } from "./models";
 import type { LoadedBy, ModelInfo, Recording, ShaderLibrary } from "./types";
 import type { GpuSource } from "./source";
@@ -62,15 +63,31 @@ export class LiveSource implements GpuSource {
     return Promise.resolve(exe ? basename(exe) : this.target.name);
   }
 
-  async listLibraries(): Promise<readonly ShaderLibrary[]> {
-    return Promise.all(this.files.filter((file) => /\.metallib$/i.test(file)).map(readMetalLibrary));
+  private libraries: Promise<readonly ShaderLibrary[]> | null = null;
+  private readonly sources = new Map<string, string>();
+
+  /** Metal libraries, and CUDA or HIP kernels in the file itself; read once, since a CUDA library can hold thousands. */
+  listLibraries(): Promise<readonly ShaderLibrary[]> {
+    this.libraries ??= this.readLibraries();
+    return this.libraries;
+  }
+
+  private async readLibraries(): Promise<readonly ShaderLibrary[]> {
+    const metal = await Promise.all(this.files.filter((file) => /\.metallib$/i.test(file)).map(readMetalLibrary));
+    const compute = await Promise.all(this.files.filter((file) => !/\.metallib$/i.test(file) && !MODEL_FILE.test(file) && statSync(file).isFile()).map(async (file) => {
+      const libs = await readComputeLibraries(file);
+      for (const lib of libs) this.sources.set(lib.name, file);
+      return libs;
+    }));
+    return [...metal, ...compute.flat()];
   }
 
   async functionIr(library: string, name: string): Promise<string> {
     const lib = (await this.listLibraries()).find((l) => l.name === library);
     const fn = lib?.functions.find((f) => f.name === name);
-    if (!fn) throw new Error(`${library} has no function named ${name}.`);
-    return fn.ir;
+    if (!lib || !fn) throw new Error(`${library} has no function named ${name}.`);
+    const source = this.sources.get(library);
+    return lib.api === "cuda" && source ? cudaKernelIr(source, library, fn) : fn.ir;
   }
 
   async loadedBy(_library: string, name: string): Promise<LoadedBy | null> {

@@ -10,7 +10,7 @@ import { appIcon, Icon } from "../components/ui";
 import { ask } from "./actions";
 import { LiveThread } from "./LiveThread";
 import type { Program } from "./model";
-import { ELLIPSIS, HOVER, isModelBench, useBench } from "./parts";
+import { ELLIPSIS, HOVER, isGpuBench, isModelBench, useBench } from "./parts";
 
 const PLAYBOOKS_SHOWN = 4;
 const SNIPPET = 40;
@@ -72,6 +72,37 @@ function EmptyModelChat(): ReactElement {
   );
 }
 
+const GPU_QUESTIONS: readonly string[] = [
+  "What are these kernels for?",
+  "Which kernels use the most registers, and does it limit how many run at once?",
+  "Which GPUs was this built for, and which would fall back or fail?",
+];
+
+/** Kernel files start from questions about the GPU code rather than playbooks for functions. */
+function EmptyGpuChat(): ReactElement {
+  const { p } = useTheme();
+  const bench = useBench();
+  const { gpuData, program } = bench;
+  const count = gpuData.kind === "ready" ? gpuData.value.libraries.reduce((sum, lib) => sum + lib.functions.length, 0) : 0;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 20, flexGrow: 1, paddingLeft: 8, paddingRight: 8 }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+        <img src={appIcon(p.icon)} style={{ width: 64, height: 64 }} />
+        <div style={{ fontSize: 18, color: p.text2 }}>What do you want to know about it?</div>
+        <div style={{ fontSize: 12, color: p.muted }}>{count > 0 ? `${program.name} · ${count.toLocaleString("en-US")} ${count === 1 ? "kernel" : "kernels"}` : program.name}</div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        {GPU_QUESTIONS.map((question) => (
+          <div key={question} onClick={() => ask(bench, question)} role="button" style={{ display: "flex", alignItems: "center", gap: 10, height: 36, paddingLeft: 10, paddingRight: 10, borderRadius: 8, cursor: "pointer", hover: HOVER }}>
+            <Icon name="gpu" size={15} color={p.data} />
+            <div style={{ flexGrow: 1, minWidth: 0, color: p.text3, ...ELLIPSIS }}>{question}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function EmptyChat(): ReactElement {
   const { p } = useTheme();
   const bench = useBench();
@@ -104,6 +135,7 @@ export function AgentTab(): ReactElement {
   const bench = useBench();
   const { chat, focusAddr, nameOf, program } = bench;
   const model = isModelBench(bench);
+  const gpu = isGpuBench(bench);
   const mentions = useMentions();
   const mention = program.functions.length > 0 ? nameOf(focusAddr) : null;
   const active = chat.tabs.find((tab) => tab.active) ?? null;
@@ -111,10 +143,10 @@ export function AgentTab(): ReactElement {
   return (
     <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, minHeight: 0 }}>
       {empty
-        ? (model ? <EmptyModelChat /> : <EmptyChat />)
+        ? (model ? <EmptyModelChat /> : gpu ? <EmptyGpuChat /> : <EmptyChat />)
         : <LiveThread chatId={active?.id ?? null} />}
       <div style={{ display: "flex", flexShrink: 0, paddingLeft: 10, paddingRight: 10, paddingBottom: 10 }}>
-        <Composer place="dock" target={chat.target} agents={chat.agents} thread={chat.thread} onAttach={chat.openFile} onDetach={chat.detach} onPickAgent={chat.pickAgent} mention={mention} mentions={mentions} hint={model ? "Ask about this model, / for skills" : null} />
+        <Composer place="dock" target={chat.target} agents={chat.agents} thread={chat.thread} onAttach={chat.openFile} onDetach={chat.detach} onPickAgent={chat.pickAgent} mention={mention} mentions={mentions} hint={model ? "Ask about this model, / for skills" : gpu ? "Ask about these kernels, / for skills" : null} />
       </div>
     </div>
   );

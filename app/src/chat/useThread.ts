@@ -46,6 +46,12 @@ function opening(target: Target | null): readonly string[] {
       'When the user names a binary or app to study, open it with the eleven-rea MCP tool open_binary (provider_id "ghidra") so Eleven can show it.',
     ];
   }
+  if (target.kind === "gpu") {
+    return [
+      `You are working inside Eleven, a reverse-engineering app. The user opened the GPU code file ${target.original}.`,
+      "It holds shaders or kernels, not a program, so don't open it with open_binary. Eleven already lists its kernels in the workbench with their registers, memory, parameters and code (PTX for CUDA, metadata for HIP). Read the file's bytes yourself only if you need more than that.",
+    ];
+  }
   if (target.kind === "model") {
     return [
       `You are working inside Eleven, a reverse-engineering app. The user opened the model file ${target.original}.`,

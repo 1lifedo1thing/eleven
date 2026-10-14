@@ -82,12 +82,12 @@ function parse(text: string): readonly ShaderFunction[] {
     const end = lines.findIndex((line, ix) => ix > start && line === "}");
     const body = lines.slice(start, end < 0 ? start + MAX_IR_LINES : end + 1);
     const ir = body.length > MAX_IR_LINES ? [...body.slice(0, MAX_IR_LINES), `; … ${body.length - MAX_IR_LINES} more lines`].join("\n") : body.join("\n");
-    return [{ name, kind: kindOf(section), ir, bindings: bindings(define, name), loadedBy: null }];
+    return [{ name, symbol: name, kind: kindOf(section), ir, bindings: bindings(define, name), loadedBy: null, stats: [] }];
   }).slice(0, MAX_FUNCTIONS);
 }
 
 /** A .metallib's functions, read through Apple's metal-objdump as AIR (LLVM IR). */
 export async function readMetalLibrary(path: string): Promise<ShaderLibrary> {
   const functions = parse(await disassemble(path));
-  return { name: basename(path), format: "Metal library · AIR, readable as LLVM IR", functions };
+  return { name: basename(path), format: "Metal library · AIR, readable as LLVM IR", api: "metal", functions };
 }

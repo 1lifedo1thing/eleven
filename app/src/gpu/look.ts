@@ -35,3 +35,15 @@ export function spanFill(tone: SpanTone, selected: boolean): string {
   return `rgba(${SPAN_RGB[tone]},${selected ? 0.45 : 0.25})`;
 }
 
+/** A kernel's name without its return type and parameter list: acc_f32, not void acc_f32(float const*, …). */
+export function shortName(name: string): string {
+  const bare = name.replace(/^(?:void|static|extern "C")\s+/, "");
+  let depth = 0;
+  for (let ix = 0; ix < bare.length; ix++) {
+    const c = bare[ix];
+    if (c === "<") depth++;
+    else if (c === ">") depth--;
+    else if (c === "(" && depth === 0) return bare.slice(0, ix);
+  }
+  return bare;
+}

@@ -5,8 +5,9 @@ import { Tooltip } from "../components/kit";
 import { useTheme } from "../theme";
 import { pageLabel } from "../gpu/models/facts";
 import { CommandKeys, Icon } from "../components/ui";
-import { ELLIPSIS, HOVER, IconButton, isModelBench, MONO_STYLE, useBench } from "./parts";
+import { ELLIPSIS, hasCodeBench, HOVER, IconButton, isModelBench, MONO_STYLE, useBench } from "./parts";
 import { currentAddr, placeIn, segmentOf } from "./where";
+import { shortName } from "../gpu/look";
 
 function Pill({ icon, label, on = false, color, onClick, children }: {
   readonly icon: string;
@@ -38,7 +39,9 @@ export function Header(): ReactElement {
   const model = isModelBench(bench);
   const pane = s.panes[s.focus];
   const tab = pane?.tabs[pane.active];
-  const crumbs = model && tab?.kind === "model" ? [pageLabel(tab.page), ...(tab.page === "tensors" && tab.tensor ? [tab.tensor] : [])] : null;
+  const crumbs = model && tab?.kind === "model"
+    ? [pageLabel(tab.page), ...(tab.page === "tensors" && tab.tensor ? [tab.tensor] : [])]
+    : tab?.kind === "shader" && !hasCodeBench(bench) ? [shortName(tab.name)] : null;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 4, height: 44, flexShrink: 0, paddingLeft: 10, paddingRight: 8 }}>
       {!s.sidebarOpen && <IconButton icon="sidebar" label="Show sidebar" iconSize={16} onClick={() => wb.patch({ sidebarOpen: true })} />}
@@ -67,7 +70,7 @@ export function Header(): ReactElement {
           </Pill>
         </div>
       </Tooltip>
-      {!model && (
+      {hasCodeBench(bench) && (
         <Tooltip label="Run this program under the debugger. It stops at your breakpoints.">
           <div style={{ display: "flex" }}>
             <Pill icon="play" label={debugging ? "Debugging" : "Debug"} on={debugging} {...(debugging ? { color: p.string } : {})} onClick={() => wb.toggleTool("debug")} />

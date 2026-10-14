@@ -123,3 +123,13 @@ export function Lines({ text, style = {} }: { readonly text: string; readonly st
 export function isModelBench(b: Bench): boolean {
   return b.chat.target?.kind === "model";
 }
+
+/** A standalone shader or kernel file (PTX, cubin, fatbin, AMD code object, metallib): GPU code with no program around it. */
+export function isGpuBench(b: Bench): boolean {
+  return b.chat.target?.kind === "gpu";
+}
+
+/** A program the engine decompiles, so the debugger and code views apply. */
+export function hasCodeBench(b: Bench): boolean {
+  return !isModelBench(b) && !isGpuBench(b);
+}

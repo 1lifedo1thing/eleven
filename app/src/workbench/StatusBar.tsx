@@ -7,7 +7,7 @@ import { useLoaded } from "../lib/useLoaded";
 import { useTheme } from "../theme";
 import { Dot, Icon, Spacer } from "../components/ui";
 import { fileOffset } from "./patch";
-import { HOVER, isModelBench, MONO_STYLE, useBench } from "./parts";
+import { HOVER, isGpuBench, isModelBench, MONO_STYLE, useBench } from "./parts";
 import { currentAddr, placeIn } from "./where";
 
 function analysis(total: number, opening: boolean): string {
@@ -35,9 +35,30 @@ function ModelStatus(): ReactElement {
   );
 }
 
+/** Shader and kernel files: how many functions were read, and from which GPU APIs. */
+function GpuStatus(): ReactElement {
+  const { p } = useTheme();
+  const { gpuData } = useBench();
+  const libraries = gpuData.kind === "ready" ? gpuData.value.libraries : [];
+  const count = libraries.reduce((sum, lib) => sum + lib.functions.length, 0);
+  const read = gpuData.kind === "loading" ? "Reading the GPU code…" : libraries.length > 0 ? `Read ${count.toLocaleString("en-US")} ${count === 1 ? "kernel" : "kernels"}` : "No GPU code Eleven can read in this file";
+  return (
+    <div role="contentinfo" aria-label="Status" style={{ display: "flex", alignItems: "center", gap: 14, height: 28, flexShrink: 0, paddingLeft: 10, paddingRight: 10, borderTopWidth: 1, borderColor: p.fill, fontSize: 11.5, color: p.muted, whiteSpace: "nowrap", overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <Dot color={gpuData.kind === "loading" ? p.data : p.string} size={6} />
+        <div>{read}</div>
+      </div>
+      {libraries.map((lib) => <div key={lib.name}>{lib.api === "cuda" ? "CUDA" : lib.api === "hip" ? "HIP" : "Metal"}</div>)}
+      <Spacer />
+      <div>Nothing was run</div>
+    </div>
+  );
+}
+
 export function StatusBar(): ReactElement {
   const bench = useBench();
-  return isModelBench(bench) ? <ModelStatus /> : <CodeStatus />;
+  if (isModelBench(bench)) return <ModelStatus />;
+  return isGpuBench(bench) ? <GpuStatus /> : <CodeStatus />;
 }
 
 function CodeStatus(): ReactElement {

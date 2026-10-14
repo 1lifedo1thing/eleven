@@ -7,6 +7,7 @@ import { Icon } from "../components/ui";
 import type { CodeMode, ListKind, Tab } from "./model";
 import { subjectMenu } from "./actions";
 import { HOVER, IconButton, useBench } from "./parts";
+import { shortName } from "../gpu/look";
 
 const VIEW_ICON: Readonly<Record<CodeMode, string>> = { pseudo: "pseudocode", asm: "assembly", graph: "graph", hex: "hex" };
 const LIST_ICON: Readonly<Record<ListKind, string>> = { strings: "strings", imports: "library", segments: "segments" };
@@ -25,7 +26,7 @@ function useLook(tab: Tab): Look {
     case "list":
       return { title: LIST_TITLE[tab.list], icon: LIST_ICON[tab.list], iconColor: null };
     case "shader":
-      return { title: tab.name, icon: "gpu", iconColor: null };
+      return { title: shortName(tab.name), icon: "gpu", iconColor: null };
     case "model":
       return { title: tab.name, icon: "model", iconColor: null };
     case "profile":
