@@ -126,11 +126,11 @@ function Toggle({ label, icon, on, tip, onClick }: { readonly label: string; rea
 
 function ViewAs({ shown, agent, onPick }: { readonly shown: Shown; readonly agent: string; readonly onPick: (next: Shown) => void }): ReactElement {
   const { p } = useTheme();
-  const entry = (label: Shown, icon: string, note: string): MenuEntry => ({ kind: "action", label, icon: label === shown ? "check" : icon, keys: note, run: () => onPick(label) });
+  const entry = (label: Shown, mark: { readonly icon: string } | { readonly logo: string }, note: string): MenuEntry => ({ kind: "action", label, ...(label === shown ? { icon: "check" } : mark), keys: note, run: () => onPick(label) });
   const entries: readonly MenuEntry[] = [
-    entry("PTX", "assembly", "in the file"),
+    entry("PTX", { icon: "assembly" }, "in the file"),
     { kind: "separator" },
-    ...KERNEL_LANGUAGES.map((language) => entry(language, ICON[language], NOTE[language])),
+    ...KERNEL_LANGUAGES.map((language) => entry(language, { logo: ICON[language] }, NOTE[language])),
   ];
   return (
     <Tooltip label={`Show this kernel as its PTX, or rewritten in another GPU language by ${agent}`}>

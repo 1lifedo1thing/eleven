@@ -1,6 +1,9 @@
+import { join } from "node:path";
+
 import type { EventPayload } from "@gpuix/react";
 import { type ReactElement, useState, useSyncExternalStore } from "react";
 
+import { ASSETS } from "../lib/assets";
 import { SANS, useTheme } from "../theme";
 import { Icon } from "./ui";
 
@@ -8,6 +11,8 @@ export type MenuAction = {
   readonly kind: "action";
   readonly label: string;
   readonly icon?: string;
+  /** A multi-color logo from assets/icons, drawn as is instead of tinted like `icon`. */
+  readonly logo?: string;
   readonly keys?: string;
   /** Why it can't run yet, shown in place of the shortcut; null or absent when it can. */
   readonly unavailable?: string | null;
@@ -123,6 +128,7 @@ function Row({ entry, active, open, onRun, onHover, onCloseSub }: {
   return (
     <div onClick={press} onMouseEnter={onHover} role="menuitem" aria-label={entry.label} aria-disabled={off} style={{ position: "relative", display: "flex", alignItems: "center", gap: 8, height: 30, flexShrink: 0, paddingLeft: 8, paddingRight: 8, borderRadius: 6, color: off ? p.faint : p.text, ...((active || open) ? { backgroundColor: p.sel } : {}), ...look }}>
       {entry.icon && <Icon name={entry.icon} size={14} color={off ? p.faint : p.text3} />}
+      {entry.kind === "action" && !entry.icon && entry.logo && <img src={join(ASSETS, "icons", `${entry.logo}.svg`)} objectFit="contain" style={{ width: 14, height: 14, flexShrink: 0, opacity: off ? 0.6 : 1, pointerEvents: "none" }} />}
       <div style={{ flexGrow: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{entry.label}</div>
       {hint && <div style={{ flexShrink: 0, paddingLeft: 12, fontSize: 11, color: p.faint, fontFamily: SANS }}>{hint}</div>}
       {entry.kind === "submenu" && <Icon name="forward" size={11} color={p.faint} />}

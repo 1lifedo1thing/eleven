@@ -42,7 +42,12 @@ const DALVIK_MODES: readonly { readonly mode: CodeMode; readonly label: string; 
   { mode: "pseudo", label: "Java", icon: "pseudocode", tip: "The method decompiled to Java by jadx" },
 ];
 
-const LANGUAGE_ICON: Readonly<Partial<Record<CodeLanguage, string>>> = { Pseudocode: "pseudocode", C: "lang-c", "C++": "lang-cpp", Rust: "lang-rust", Go: "lang-go", Swift: "lang-swift", Java: "lang-java" };
+type LanguageMark = { readonly icon: string } | { readonly logo: string };
+
+const LANGUAGE_MARK: Readonly<Record<CodeLanguage, LanguageMark>> = {
+  Pseudocode: { icon: "pseudocode" }, C: { logo: "lang-c" }, "C++": { logo: "lang-cpp" }, Rust: { icon: "lang-rust" }, Go: { icon: "lang-go" }, Swift: { logo: "lang-swift" },
+  Python: { logo: "lang-python" }, TypeScript: { logo: "lang-typescript" }, Java: { logo: "lang-java" }, "C#": { logo: "lang-csharp" }, Zig: { logo: "lang-zig" },
+};
 
 /** Which language the pseudocode view shows: the engine's own pseudocode, or the agent's rewrite in another language. */
 function LanguagePicker(): ReactElement {
@@ -50,8 +55,8 @@ function LanguagePicker(): ReactElement {
   const { settings, update } = useSettings();
   const current = settings.codeLanguage;
   const entries = CODE_LANGUAGES.map((language): MenuEntry => {
-    const icon = language === current ? "check" : LANGUAGE_ICON[language];
-    return { kind: "action", label: language, ...(icon ? { icon } : {}), run: () => update({ codeLanguage: language }) };
+    const mark = language === current ? { icon: "check" } : LANGUAGE_MARK[language];
+    return { kind: "action", label: language, ...mark, run: () => update({ codeLanguage: language }) };
   });
   return (
     <Tooltip label="Rewrite this function in another language with the chat's agent">
