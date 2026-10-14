@@ -82,5 +82,7 @@ export type Program = {
   readonly retype: ((addr: string, next: CodeType | null, previous: CodeType | null) => Promise<void>) | null;
   /** A whole source file from `Fn.file`, for engines that decompile to files (jadx). */
   readonly source?: (file: string) => Promise<SourceText>;
+  /** The functions that use the string at an address, for engines that can follow references to data. */
+  readonly codeUsing?: (addr: string) => Promise<readonly string[]>;
 };
 

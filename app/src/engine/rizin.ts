@@ -1,11 +1,12 @@
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import type { ChildProcessWithoutNullStreams } from "node:child_process";
 
 import { isRecord } from "../lib/guards";
 import { pathSetting } from "../settings/store";
 import type { Caller, Fn, HexRow, Refs, TableRow } from "../workbench/model";
 import type { CodeType } from "./codeTypes";
+import { start, stop } from "../lib/process";
 
-function rizinProgram(): string {
+export function rizinProgram(): string {
   return pathSetting("rizinPath", "ELEVEN_RIZIN") ?? "rizin";
 }
 
@@ -21,7 +22,7 @@ class RizinSession {
   private readonly ready: Promise<void>;
 
   constructor(path: string) {
-    this.proc = spawn(rizinProgram(), ["-q0", "-e", "scr.color=0", path]);
+    this.proc = start(rizinProgram(), ["-q0", "-e", "scr.color=0", path]);
     this.proc.stderr.resume();
     this.proc.stdout.setEncoding("utf8");
     this.proc.stdout.on("data", (chunk: string) => this.receive(chunk));
@@ -46,7 +47,7 @@ class RizinSession {
   }
 
   close(): void {
-    this.proc.kill();
+    stop(this.proc);
   }
 }
 
@@ -97,6 +98,14 @@ function hex(value: number): string {
 
 function array(value: unknown): readonly unknown[] {
   return Array.isArray(value) ? value : [];
+}
+
+const ENTRY_NAMES = ["main", "sym._main", "sym.main", "entry0"] as const;
+
+/** Where reading starts: main when rizin names it, else the entry point, else the first real function. */
+export function rizinEntry(fns: readonly Fn[]): Fn | null {
+  const named = ENTRY_NAMES.flatMap((name) => fns.filter((fn) => fn.name === name));
+  return named[0] ?? fns.find((fn) => fn.kind === "function") ?? null;
 }
 
 /** Every function rizin finds. Imports and thunks are marked so the UI dims them. */

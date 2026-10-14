@@ -4,7 +4,7 @@ import { type CodeType, isCodeType } from "../engine/codeTypes";
 import type { Target } from "../engine/target";
 import { loadDossier } from "../engine/dossier";
 import { loadProject, projectId } from "../engine/project";
-import { hexRows, programSegments, programStrings } from "./layout";
+import { codeUsingString, hexRows, programSegments, programStrings } from "./layout";
 import type { Fn, Program, TableRow } from "./model";
 import { forgetProcedures, loadProcedures, type Procedure } from "../engine/procedures";
 import { activeBackend } from "../analysis/engines";
@@ -12,6 +12,7 @@ import { isAndroidCode, openJadx } from "../engine/jadx";
 import { rizinBytes, rizinDisassembly, rizinFunctions, rizinHasDecompiler, rizinPseudocode, rizinRefs, rizinReplayOn, rizinRetype, rizinSegments, rizinStrings } from "../engine/rizin";
 
 const RIZIN_HEX_BYTES = 256;
+const CODE_USING_LIMIT = 12;
 
 const LOG_WIDTH = 37;
 
@@ -142,6 +143,7 @@ async function loadProgramRea(target: Target): Promise<Program> {
       return { callers: facts.callers.map((site) => ({ addr: site.from, at: site.at })), callees: facts.callees };
     },
     dossier: (addr) => loadDossier(opened, addr),
+    codeUsing: (addr) => timed(log, `xrefs ${addr}`, () => codeUsingString(target.path, addr, CODE_USING_LIMIT)),
     hex: (addr) => hexRows(target.path, addr),
     focusLine: () => -1,
     retype: async (addr, next) => {

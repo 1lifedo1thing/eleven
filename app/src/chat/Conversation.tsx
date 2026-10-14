@@ -16,7 +16,7 @@ const SHIMMER_MS = 1800;
 const SHIMMER_CHAR_PX = 7.5;
 const SHIMMER_LAYERS = [{ width: 56, opacity: 0.25 }, { width: 32, opacity: 0.35 }, { width: 14, opacity: 0.5 }] as const;
 
-function Shimmer({ text, color, now }: { readonly text: string; readonly color: string; readonly now: number }): ReactElement {
+export function Shimmer({ text, color, now }: { readonly text: string; readonly color: string; readonly now: number }): ReactElement {
   const widest = SHIMMER_LAYERS[0].width;
   const travel = text.length * SHIMMER_CHAR_PX + widest;
   const center = ((now % SHIMMER_MS) / SHIMMER_MS) * travel - widest / 2;

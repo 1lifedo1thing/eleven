@@ -21,6 +21,27 @@ const LABELS: Readonly<Record<string, readonly [label: string, arg?: string]>> =
   ToolSearch: ["Looked up its tools"],
 };
 
+/** The same tools while they run, for a live status line: "Reading assembly" rather than "Read assembly". */
+const DOING: Readonly<Record<string, string>> = {
+  procedure_pseudo_code: "Reading pseudocode",
+  procedure_assembly: "Reading assembly",
+  procedure_callers: "Finding who calls",
+  procedure_callees: "Finding what it calls",
+  procedure_info: "Reading function details",
+  analyze_function: "Studying a function",
+  open_binary: "Opening the file",
+  binary_overview: "Reading the overview",
+  binary_session: "Checking the session",
+  list_procedures: "Listing functions",
+  list_strings: "Listing strings",
+  list_segments: "Listing segments",
+  search_strings: "Searching strings",
+  search_procedures: "Searching functions",
+  find_code_for_string: "Finding code using a string",
+  xrefs: "Finding references",
+  ToolSearch: "Looking up its tools",
+};
+
 export type ToolLabel = { readonly label: string; readonly detail: string | null };
 
 /** Tool ids read as words; anything else, like a whole shell command an agent sent as the title, stays as written. */
@@ -52,4 +73,11 @@ export function toolLabel(tool: string, input: unknown): ToolLabel {
 export function describe(tool: string, input: unknown): string {
   const { label, detail } = toolLabel(tool, input);
   return detail ? `${label} · ${detail}` : label;
+}
+
+/** What a running tool is doing right now, like "Reading assembly · FUN_100002404". */
+export function doing(tool: string, input: unknown): string {
+  const { label, detail } = toolLabel(tool, input);
+  const now = DOING[reaToolName(tool) ?? tool] ?? label;
+  return detail ? `${now} · ${detail}` : now;
 }

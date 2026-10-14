@@ -152,6 +152,8 @@ export type SourceNode = {
   readonly depth: number;
   readonly folder: boolean;
   readonly ext: string;
+  /** The path as the binary spells it; empty for folders. */
+  readonly full: string;
 };
 
 const SOURCE = /(?:^|[\s"'(])((?:\/|[A-Za-z]:\\|\.{0,2}\/)?(?:[\w.@+-]+\/)+[\w.@+-]+\.(?:swift|mm|m|c|cc|cpp|cxx|h|hh|hpp|metal|rs|go|kt|java))(?=$|[\s"':),])/;
@@ -180,13 +182,13 @@ export function sourceTree(paths: readonly string[], closed: ReadonlySet<string>
   const keep = Math.max(0, commonDir(split) - 1);
   const files = split.map((parts) => parts.slice(keep));
   const nodes = new Map<string, SourceNode>();
-  for (const parts of files) {
+  files.forEach((parts, ix) => {
     parts.forEach((name, depth) => {
       const path = parts.slice(0, depth + 1).join("/");
       const folder = depth < parts.length - 1;
-      if (!nodes.has(path)) nodes.set(path, { path, name, depth, folder, ext: folder ? "" : (name.split(".").pop() ?? "").toLowerCase() });
+      if (!nodes.has(path)) nodes.set(path, { path, name, depth, folder, ext: folder ? "" : (name.split(".").pop() ?? "").toLowerCase(), full: folder ? "" : (paths[ix] ?? "") });
     });
-  }
+  });
   const sorted = [...nodes.values()].sort((a, b) => {
     const pa = a.path.split("/");
     const pb = b.path.split("/");

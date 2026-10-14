@@ -77,18 +77,28 @@ export async function containingFunction(path: string, address: string): Promise
 }
 
 /**
- * The function that references a string, via REA. Plain strings are referenced from code directly;
+ * The functions that reference a string, via REA, up to `limit`. Plain strings are referenced from code directly;
  * Objective-C string literals go through a CFString record, so a data referrer is stepped back to it.
  */
-export async function codeForString(path: string, address: string): Promise<string | null> {
+export async function codeUsingString(path: string, address: string, limit: number): Promise<readonly string[]> {
+  const found = new Set<string>();
   for (const ref of refAddresses(await rea.tool(path, "xrefs", { address }))) {
     const direct = await containingFunction(path, ref);
-    if (direct) return direct;
-    const record = `0x${(BigInt(ref) - CFSTRING_TEXT_OFFSET).toString(16)}`;
-    for (const site of refAddresses(await rea.tool(path, "xrefs", { address: record }))) {
-      const loader = await containingFunction(path, site);
-      if (loader) return loader;
+    if (direct) found.add(direct);
+    else {
+      const record = `0x${(BigInt(ref) - CFSTRING_TEXT_OFFSET).toString(16)}`;
+      for (const site of refAddresses(await rea.tool(path, "xrefs", { address: record }))) {
+        const loader = await containingFunction(path, site);
+        if (loader) found.add(loader);
+        if (found.size >= limit) break;
+      }
     }
+    if (found.size >= limit) break;
   }
-  return null;
+  return [...found];
+}
+
+/** The first function that references a string. */
+export async function codeForString(path: string, address: string): Promise<string | null> {
+  return (await codeUsingString(path, address, 1))[0] ?? null;
 }

@@ -35,6 +35,11 @@ export const PERMISSION_PRESETS = {
 
 export const PATH_KEYS = ["exportDir", "lldbDap", "ghidraDir", "javaHome", "reaPath", "rizinPath", "cacheDir", "hopperPath", "idaPath", "skillsDir"] as const;
 
+/** Languages the pseudocode view can rewrite a function into; Pseudocode is the engine's own output. */
+export const CODE_LANGUAGES = ["Pseudocode", "C", "C++", "Rust", "Go", "Swift", "Python", "TypeScript", "Java", "C#", "Zig"] as const;
+
+export type CodeLanguage = (typeof CODE_LANGUAGES)[number];
+
 export const CODE_FONTS = ["JetBrains Mono", "SF Mono", "Menlo"] as const;
 
 export type CodeFont = (typeof CODE_FONTS)[number];
@@ -72,6 +77,7 @@ export type Settings = {
   /** How strongly the desktop behind the window is blurred, from 0 to 100. */
   readonly frost: number;
   readonly lineSpacing: "Compact" | "Normal" | "Relaxed";
+  readonly codeLanguage: CodeLanguage;
   readonly lineNumbers: boolean;
   readonly sendKey: "Return" | "Command Return";
   readonly notifyWhenDone: boolean;
@@ -155,6 +161,7 @@ export const DEFAULT_SETTINGS: Settings = {
   transparency: process.platform === "linux" ? 0 : 30,
   frost: 60,
   lineSpacing: "Normal",
+  codeLanguage: "Pseudocode",
   lineNumbers: true,
   sendKey: "Return",
   notifyWhenDone: true,
@@ -257,6 +264,7 @@ const SETTINGS: z.ZodType<Settings> = z.object({
   transparency: z.number().int().min(0).max(100).catch(D.transparency),
   frost: z.number().int().min(0).max(100).catch(D.frost),
   lineSpacing: z.enum(["Compact", "Normal", "Relaxed"]).catch(D.lineSpacing),
+  codeLanguage: z.enum(CODE_LANGUAGES).catch(D.codeLanguage),
   lineNumbers: z.boolean().catch(D.lineNumbers),
   sendKey: z.enum(["Return", "Command Return"]).catch(D.sendKey),
   notifyWhenDone: z.boolean().catch(D.notifyWhenDone),

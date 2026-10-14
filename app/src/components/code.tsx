@@ -5,7 +5,7 @@ import { useSettings } from "../settings/store";
 import { type Palette, useTheme } from "../theme";
 import type { Span } from "./highlight";
 
-export type Syntax = "c" | "asm" | "ptx";
+export type Syntax = "c" | "asm" | "code" | "ptx";
 
 type Part =
   | { readonly kind: "text"; readonly text: string; readonly color: string }
@@ -31,6 +31,21 @@ const C_RULES: readonly (readonly [Role, string])[] = [
   ["data", "\\b(?:DAT|PTR|LAB|switchD|caseD|s|u)_\\w+|\\b_?OBJC_\\w+"],
   ["number", "\\b(?:0x[0-9a-fA-F]+|\\d+(?:\\.\\d+)?)[uUlLfF]*\\b"],
   ["type", "\\b[A-Z]\\w*(?=\\s*\\*|\\s+\\**[A-Za-z_]\\w*\\s*[;,=)\\[])"],
+];
+
+const CODE_KEYWORDS = "fn|let|mut|pub|use|mod|impl|trait|struct|enum|match|if|else|while|for|loop|in|return|break|continue|where|as|ref|move|async|await|dyn|unsafe|crate|self|Self|super|const|static|type|func|go|defer|chan|select|package|import|var|range|interface|map|def|class|lambda|with|yield|from|pass|elif|not|and|or|is|None|True|False|try|catch|except|finally|raise|throw|throws|new|this|null|nil|true|false|guard|init|deinit|extension|protocol|public|private|internal|fileprivate|override|final|open|inout|some|any|export|function|undefined|readonly|namespace|using|void|virtual|sealed|partial|switch|case|default|do|comptime|errdefer|orelse|test";
+/** Keywords that take parentheses but aren't calls. */
+const CODE_CONTROL = "if|elif|while|for|match|switch|return|catch|except|guard|sizeof|typeof|await|yield|not|and|or|in|with|assert";
+const CODE_TYPES = "i8|i16|i32|i64|i128|isize|u8|u16|u32|u64|u128|usize|f32|f64|bool|char|str|int|uint|float|double|long|short|byte|rune|string|number|boolean|object|bigint";
+
+/** Modern languages a rewrite can be in: shared keywords, capitalized names as types, calls and macros. Order matters: earlier wins. */
+const CODE_RULES: readonly (readonly [Role, string])[] = [
+  ["comment", "\\/\\*.*?(?:\\*\\/|$)|\\/\\/.*$|#(?![\\[!]).*$"],
+  ["string", "\"(?:[^\"\\\\]|\\\\.)*\"|'(?:[^'\\\\]|\\\\.)*'|`(?:[^`\\\\]|\\\\.)*`"],
+  ["call", `\\b(?!(?:${CODE_CONTROL})\\b)[a-z_]\\w*!?(?=\\s*\\()|\\b[a-z_]\\w*!(?=\\s*[\\[{])`],
+  ["keyword", `\\b(?:${CODE_KEYWORDS})\\b`],
+  ["type", `\\b(?:${CODE_TYPES})\\b|\\b[A-Z]\\w*`],
+  ["number", "\\b(?:0x[0-9a-fA-F_]+|\\d[\\d_]*(?:\\.\\d+)?)(?:[iuf]\\d+|usize|isize|[uUlLfF]*)\\b"],
 ];
 
 const ASM_RULES: readonly (readonly [Role, string])[] = [
@@ -61,11 +76,13 @@ function compile(rules: readonly (readonly [Role, string])[]): RegExp {
 
 const C_TOKENS = compile(C_RULES);
 const ASM_TOKENS = compile(ASM_RULES);
+const CODE_TOKENS = compile(CODE_RULES);
 const PTX_TOKENS = compile(PTX_RULES);
 
 const GRAMMARS: Readonly<Record<Syntax, { readonly rules: readonly (readonly [Role, string])[]; readonly tokens: RegExp }>> = {
   c: { rules: C_RULES, tokens: C_TOKENS },
   asm: { rules: ASM_RULES, tokens: ASM_TOKENS },
+  code: { rules: CODE_RULES, tokens: CODE_TOKENS },
   ptx: { rules: PTX_RULES, tokens: PTX_TOKENS },
 };
 
