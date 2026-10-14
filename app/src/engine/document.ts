@@ -73,16 +73,9 @@ async function binaryPart(path: string, id: string): Promise<Part> {
   return part;
 }
 
-/** Where projects live: one `.eleven` file each, in Documents/Eleven. */
+/** Where the save dialog starts: Documents/Eleven. */
 export function projectsFolder(): string {
   return process.env.ELEVEN_PROJECTS_DIR ?? join(homedir(), "Documents", "Eleven");
-}
-
-function freePath(name: string): string {
-  const base = name.replace(/\.(app|eleven)$/i, "").replace(/[/\\:]/g, "_") || "Untitled";
-  let path = join(projectsFolder(), `${base}${EXTENSION}`);
-  for (let n = 2; existsSync(path); n++) path = join(projectsFolder(), `${base} ${n}${EXTENSION}`);
-  return path;
 }
 
 const text = (value: string): Uint8Array => new TextEncoder().encode(value);
@@ -100,15 +93,6 @@ export async function saveDocument(target: Target, id: string, path: string, rem
   mkdirSync(dirname(path), { recursive: true });
   writeAtomic(path, pack(info, parts));
   if (remember) setDocumentPath(id, path);
-}
-
-/** Every project gets its file the first time it opens; returns where it is. */
-export async function ensureDocument(target: Target, id: string): Promise<string> {
-  const known = documentPath(id);
-  if (known) return known;
-  const path = freePath(target.name);
-  await saveDocument(target, id, path);
-  return path;
 }
 
 /** Deletes the project's `.eleven` file and every chat in it. */

@@ -105,7 +105,7 @@ function ProjectCard({ entry, current, chats, onOpen, onChanged, onProblem }: {
     }
   };
   const saveCopy = async (): Promise<void> => {
-    if (!file) return onProblem("This project hasn't been saved to a file yet. Open it once and Eleven saves it for you.");
+    if (!file) return onProblem("This project hasn't been saved to a file yet. Open it and press ⌘S to save it.");
     const to = await askSavePath(entry.name);
     if (to) copyFileSync(file, to);
   };

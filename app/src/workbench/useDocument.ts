@@ -4,7 +4,7 @@ import { useGpuix } from "@gpuix/react";
 import { useEffect, useRef } from "react";
 
 import { onThreadsChange } from "../chat/history";
-import { askSavePath, documentPath, ensureDocument, saveDocument } from "../engine/document";
+import { askSavePath, documentPath, saveDocument } from "../engine/document";
 import type { Target } from "../engine/target";
 import { errorMessage } from "../lib/guards";
 import { useCommand } from "../lib/shortcuts";
@@ -41,7 +41,7 @@ export function useOpenInWorkbench(bench: Bench): (path: string) => void {
   return open;
 }
 
-/** ⌘S saves the project as a `.eleven` file, asking where the first time; after that it saves itself as you work. */
+/** Nothing is written to a `.eleven` file until you press ⌘S; after that first save it keeps that file up to date. */
 export function useDocument(bench: Bench): void {
   const { chat, program, wb } = bench;
   const { s } = wb;
@@ -68,11 +68,6 @@ export function useDocument(bench: Bench): void {
     }, AUTOSAVE_MS);
   };
   useCommand("save", () => void save(true));
-  useEffect(() => {
-    const target = chat.target;
-    if (!ready || !target || documentPath(program.id)) return;
-    void ensureDocument(target, program.id).catch((err: unknown) => wb.notify(`Couldn't create the project file. ${errorMessage(err)}`, null));
-  }, [ready, program.id]);
   useEffect(later, [s.names, s.bookmarks, s.notes, s.comments, s.colors, s.groups]);
   useEffect(() => onThreadsChange(later), [program.id, ready]);
   const flush = useRef(save);
