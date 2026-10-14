@@ -3,7 +3,8 @@ import { beforeAll, expect, test } from "bun:test";
 import { join } from "node:path";
 
 import { adoptLoginShell } from "../src/agents/detect";
-import { isAndroidCode } from "../src/engine/jadx";
+import { isAndroidCode, jadxProcedures } from "../src/engine/jadx";
+import { projectId } from "../src/engine/project";
 import { prepareTarget } from "../src/engine/target";
 import { adoptToolchain } from "../src/engine/toolchain";
 import { loadProgram } from "../src/workbench/program";
@@ -78,3 +79,8 @@ test("clicking a .java file in the sidebar opens the whole file, and its method 
   }
 }, 180_000);
 
+test("the agent's tools list an APK's methods through jadx, never Ghidra", async () => {
+  const target = prepareTarget(APK);
+  const procedures = await jadxProcedures(target.path, projectId(target));
+  expect(procedures.map((p) => p.name)).toContain("app.eleven.hello.Greeter.greet");
+});

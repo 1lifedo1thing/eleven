@@ -4,6 +4,7 @@ import { bundleExecutable } from "../gpu/live";
 import { describeFindings, listRuns, readGpuRun } from "../gpu/trace";
 import type { Chat } from "../chat/useChat";
 import { loadProcedures, type Procedure } from "../engine/procedures";
+import { DALVIK, jadxProcedures } from "../engine/jadx";
 import { type Author, describeEdit, type EditField, setValue } from "../engine/edits";
 import { pending, propose } from "../engine/history";
 import { loadProject, type Project, projectId, updateProject } from "../engine/project";
@@ -60,7 +61,7 @@ export function bridgeHandler(chat: () => Chat): (tool: BridgeTool, args: Readon
     const target = chat().target;
     if (!target) throw new Error("No file is open in Eleven. Ask the user to open one.");
     const id = projectId(target);
-    const procedures = await loadProcedures(target.path, id);
+    const procedures = target.arch === DALVIK ? await jadxProcedures(target.path, id) : await loadProcedures(target.path, id);
     switch (tool) {
       case "open_function": {
         const fn = find(procedures, loadProject(id), args.function ?? "");

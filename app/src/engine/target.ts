@@ -4,7 +4,7 @@ import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, sta
 import { basename, join } from "node:path";
 
 import { isElevenFile, openDocument } from "./document";
-import { isAndroidCode } from "./jadx";
+import { DALVIK, isAndroidCode } from "./jadx";
 import { cacheRoot, OS } from "../lib/platform";
 import { binaryInfoOf, type Slice } from "./binaryInfo";
 
@@ -90,7 +90,7 @@ export function prepareTarget(original: string, pick: string | null = null): Tar
   const executable = isApp ? bundleExecutable(original) : original;
   const { format, slices } = binaryInfoOf(executable, statSync(executable).size);
   const base = { original, name: basename(original), kind: kindOf(basename(original), isApp) };
-  if (!isApp && isAndroidCode(executable)) return { ...base, path: executable, arch: "dalvik", meta: "Android · Dalvik" };
+  if (!isApp && isAndroidCode(executable)) return { ...base, path: executable, arch: DALVIK, meta: "Android · Dalvik" };
   const archs = slices.map((s) => s.arch);
   if (slices.length > 1) {
     const arch = pick !== null && archs.includes(pick) ? pick : HOST_SLICES.find((a) => archs.includes(a)) ?? archs[0] ?? "";

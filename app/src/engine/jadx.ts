@@ -8,12 +8,16 @@ import { promisify } from "node:util";
 import { isRecord, stringField, type JsonRecord } from "../lib/guards";
 import { cacheDir } from "../settings/actions";
 import type { Caller, Fn, Refs, SourceText, TableRow } from "../workbench/model";
+import type { Procedure } from "./procedures";
 
 const run = promisify(execFile);
 
 const ACC_NATIVE = 0x100;
 const OPEN_FILES = 64;
 const KEPT_CLASSES = 48;
+
+/** The arch an opened Android app gets, which routes it to jadx instead of Ghidra. */
+export const DALVIK = "dalvik";
 
 type JadxMethod = {
   readonly addr: string;
@@ -390,4 +394,9 @@ export async function openJadx(path: string, sha256: string): Promise<JadxApp> {
     refs: (addr) => session.refs(addr),
     source: (file) => session.source(file),
   };
+}
+
+/** An Android app's methods as procedures, so looking a function up by name never sends the app to Ghidra. */
+export async function jadxProcedures(path: string, sha256: string): Promise<readonly Procedure[]> {
+  return (await openJadx(path, sha256)).functions.map((fn) => ({ address: fn.addr, name: fn.name, kind: "Function" }));
 }

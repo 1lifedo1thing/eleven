@@ -11,6 +11,7 @@ import { currentSettings, type Settings } from "../settings/store";
 import { errorMessage, stringField } from "../lib/guards";
 import { entryProcedure, loadProcedures } from "../engine/procedures";
 import { projectId } from "../engine/project";
+import { DALVIK, openJadx } from "../engine/jadx";
 import { type Opened, rea } from "../engine/rea";
 import { prepareTarget, type Target } from "../engine/target";
 import { type SavedThread, saveThread } from "./history";
@@ -97,11 +98,20 @@ function openedPath(event: AgentEvent, tools: Map<string, string>): string | nul
 }
 
 async function entryName(target: Target, opened: { current: Opened | null }): Promise<string | null> {
+  if (target.arch === DALVIK) return null;
   opened.current ??= await rea.open(target.path);
   return entryProcedure(await loadProcedures(target.path, opened.current.sha256))?.name ?? null;
 }
 
+async function jadxCode(target: Target, procedure: string): Promise<string> {
+  const app = await openJadx(target.path, projectId(target));
+  const fn = app.functions.find((candidate) => candidate.name === procedure);
+  if (!fn) throw new Error(`This app has no method named ${procedure}.`);
+  return app.code(fn.addr, "pseudo");
+}
+
 async function loadCode(target: Target, opened: { current: Opened | null }, procedure: string): Promise<string> {
+  if (target.arch === DALVIK) return jadxCode(target, procedure);
   opened.current ??= await rea.open(target.path);
   return rea.code(opened.current, procedure, "pseudocode");
 }
