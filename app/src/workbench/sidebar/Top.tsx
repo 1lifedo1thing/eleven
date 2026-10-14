@@ -12,7 +12,7 @@ import { useSettings } from "../../settings/store";
 import { useTheme } from "../../theme";
 import { ago } from "../../welcome/files";
 import { FileGlyph } from "../FileGlyph";
-import { ELLIPSIS, HOVER, IconButton, isModelBench, useBench } from "../parts";
+import { ELLIPSIS, HOVER, IconButton, useBench } from "../parts";
 import { INSET, SideRow } from "./parts";
 
 const MENU_WIDTH = 260;
@@ -93,22 +93,6 @@ export function ProjectSwitcher(): ReactElement {
           </Popover>
         )}
       </div>
-    </div>
-  );
-}
-
-/** New chat, search, playbooks and debug: the things you start from, in the reference's plain style. */
-export function QuickActions({ onPlaybooks }: { readonly onPlaybooks: () => void }): ReactElement {
-  const bench = useBench();
-  const { wb, chat } = bench;
-  const { settings } = useSettings();
-  const combo = (id: "thread" | "palette"): string => comboFor(id, settings.keymap ?? "eleven", settings.shortcuts);
-  return (
-    <div style={{ display: "flex", flexDirection: "column", flexShrink: 0, paddingTop: 10 }}>
-      <SideRow lead={{ kind: "icon", name: "new-chat" }} label="New chat" combo={combo("thread")} onClick={() => { chat.thread.reset(); wb.reveal("agent"); }} />
-      <SideRow lead={{ kind: "icon", name: "search" }} label="Search" combo={combo("palette")} onClick={() => wb.patch({ paletteOpen: true, paletteQuery: "" })} />
-      <SideRow lead={{ kind: "icon", name: "plan" }} label="Playbooks" onClick={onPlaybooks} />
-      {!isModelBench(bench) && <SideRow lead={{ kind: "icon", name: "debug" }} label="Debug this program" onClick={() => wb.reveal("debug")} />}
     </div>
   );
 }

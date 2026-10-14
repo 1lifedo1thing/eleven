@@ -117,6 +117,9 @@ test("M1: clicking a call in the code jumps to that function", async () => {
 }, 180_000);
 
 test("M1: the function list filters as you type", async () => {
+  const heading = findByLabel(ui.renderer.toJSON(), "Functions");
+  if (heading !== null && findByLabel(ui.renderer.toJSON(), "Filter functions") === null) clickId(heading);
+  await settle(() => findByLabel(ui.renderer.toJSON(), "Filter functions") !== null);
   const filter = findByLabel(ui.renderer.toJSON(), "Filter functions");
   if (filter === null) throw new Error("no filter box");
   ui.renderer.nativeSimulateKeystrokes(filter, "2 3 2 c");

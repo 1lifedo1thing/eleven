@@ -80,7 +80,7 @@ export function Heading({ id, title, count }: { readonly id: NavSection; readonl
   const { p } = useTheme();
   const { open, toggle } = useSectionOpen(id);
   return (
-    <div onClick={toggle} role="button" aria-expanded={open} aria-label={title} style={{ display: "flex", alignItems: "center", gap: 6, height: 26, marginTop: 4, flexShrink: 0, paddingLeft: INSET, paddingRight: INSET, borderRadius: 6, cursor: "pointer", opacity: open ? 1 : 0.6, hover: HOVER }}>
+    <div onClick={toggle} role="button" aria-expanded={open} aria-label={title} style={{ display: "flex", alignItems: "center", gap: 6, height: 26, marginTop: 4, flexShrink: 0, paddingLeft: INSET, paddingRight: INSET, borderRadius: 6, cursor: "pointer", hover: HOVER }}>
       <div style={{ fontSize: 12, fontWeight: 500, color: p.faint, pointerEvents: "none" }}>{title}</div>
       <Icon name={open ? "disclosure" : "forward"} size={10} color={p.faint} />
       <div style={{ flexGrow: 1 }} />

@@ -2,14 +2,46 @@ import type { Fn } from "../model";
 
 export type FnSort = "files" | "address" | "name";
 
-export type FnShow = "all" | "renamed" | "imports";
+export type FnShow = "all" | "yours" | "renamed" | "imports";
 
-/** A folder is a package or namespace; a file is a decompiled source file; a class is a C++ or Objective-C class. */
-export type TreeKind = "folder" | "file" | "class";
+/** A group is an origin heading like Your code or Libraries; a folder is a package or namespace; a file is a decompiled source file; a class is a C++ or Objective-C class. */
+export type TreeKind = "group" | "folder" | "file" | "class";
 
 export type FnRow =
   | { readonly kind: "node"; readonly path: string; readonly name: string; readonly tree: TreeKind; readonly ext: string; readonly depth: number; readonly count: number; readonly open: boolean }
-  | { readonly kind: "fn"; readonly fn: Fn; readonly label: string; readonly depth: number };
+  | { readonly kind: "fn"; readonly fn: Fn; readonly label: string; readonly depth: number; readonly where?: string };
+
+/** Where a function comes from: the program's own code, or something it was built with. */
+export type Origin = "yours" | "libraries" | "imports" | "runtime";
+
+const ORIGINS: readonly Origin[] = ["yours", "libraries", "imports", "runtime"];
+
+export const ORIGIN_LABEL: Readonly<Record<Origin, string>> = { yours: "Your code", libraries: "Libraries", imports: "Imports", runtime: "Runtime" };
+
+/** Packages that ship inside apps rather than being written for them: Android, Kotlin, Google, Facebook, Square and the usual SDKs. */
+const LIBRARY_PACKAGE = /^(?:android|androidx|kotlin|kotlinx|java|javax|dalvik|sun|j\$|_COROUTINE|com[./](?:google|facebook|squareup|android|fasterxml|bumptech|airbnb|swmansion|th3rdwave|reactnativecommunity)|okhttp3|okio|retrofit2|io[./](?:reactivex|sentry|ktor|grpc|opentelemetry)|rx|dagger|org[./](?:jetbrains|intellij|apache|json|xmlpull|chromium|reactivestreams)|bolts|coil|app[./]notifee|expo|host[./]exp)(?:[./$]|$)/;
+
+/** Code the compiler or toolchain adds to every program: Swift and Objective-C runtime glue, C runtime startup, stack checks. */
+const RUNTIME_NAME = /^(?:_?\$s|_?\$S|_+swift|swift_|_?objc_|outlined |type metadata|protocol witness|reabstraction thunk|thunk for|partial apply|merged |_+cxa_|_+gxx_|_+clang_|_+(?:scrt|acrt|vcrt|security_|report_gsfailure|GSHandler|chkstk|guard_|CRT|initterm|local_stdio|isa_available)|_?(?:start|_init|_fini|frame_dummy|register_tm_clones|deregister_tm_clones|__do_global_dtors_aux|__libc_csu_init|__libc_csu_fini|mainCRTStartup|wmainCRTStartup|WinMainCRTStartup|wWinMainCRTStartup|pre_c_init|pre_cpp_init|DllMainCRTStartup)$)/;
+
+/** A function no symbol names, called by the address the decompiler gave it. */
+const UNNAMED = /^(?:thunk_)?(?:FUN|sub|fcn|LAB)_[0-9a-fA-F]+$/;
+
+export function originOf(fn: Fn, name: string): Origin {
+  if (fn.file) return LIBRARY_PACKAGE.test(fn.file) ? "libraries" : "yours";
+  if (fn.kind === "thunk") return "imports";
+  return RUNTIME_NAME.test(name) ? "runtime" : "yours";
+}
+
+/** The source file a file row stands for: its tree path without the origin heading (`#yours/`) or the root's leading separator. */
+export function rowFile(path: string): string {
+  return path.replace(/^#\w+\//, "").replace(/^\./, "");
+}
+
+/** A folder starts folded unless it's alone at its level; `flipped` holds the ones the user clicked away from that start. */
+function openAt(path: string, flipped: ReadonlySet<string>, byDefault: boolean): boolean {
+  return byDefault !== flipped.has(path);
+}
 
 export const SORT_LABEL: Readonly<Record<FnSort, string>> = { files: "By file", address: "By address", name: "A–Z" };
 
@@ -73,7 +105,7 @@ function child(parent: TreeNode, name: string, sep: string): TreeNode {
   return made;
 }
 
-const FOLDERS_FIRST: Readonly<Record<TreeKind, number>> = { folder: 0, class: 1, file: 1 };
+const FOLDERS_FIRST: Readonly<Record<TreeKind, number>> = { group: 0, folder: 0, class: 1, file: 1 };
 
 /** A folder holding only one other folder shows as one row, `com.google.android`, the way editors compact them. */
 function compact(node: TreeNode): { readonly node: TreeNode; readonly name: string } {
@@ -87,25 +119,35 @@ function compact(node: TreeNode): { readonly node: TreeNode; readonly name: stri
   }
 }
 
-function emit(node: TreeNode, depth: number, folded: ReadonlySet<string>, out: FnRow[]): void {
+function emit(node: TreeNode, depth: number, flipped: ReadonlySet<string>, out: FnRow[], alone: boolean): void {
   const { node: shown, name } = compact(node);
-  const open = !folded.has(shown.path);
+  const open = openAt(shown.path, flipped, alone);
   const ext = shown.tree === "file" ? (shown.name.split(".").pop() ?? "").toLowerCase() : "";
   out.push({ kind: "node", path: shown.path, name, tree: shown.tree, ext, depth, count: shown.count, open });
   if (!open) return;
   const kids = [...shown.children.values()].sort((a, b) => FOLDERS_FIRST[a.tree] - FOLDERS_FIRST[b.tree] || a.name.localeCompare(b.name));
-  for (const kid of kids) emit(kid, depth + 1, folded, out);
+  for (const kid of kids) emit(kid, depth + 1, flipped, out, kids.length === 1 && shown.fns.length === 0);
   for (const { fn, member } of [...shown.fns].sort((a, b) => a.member.localeCompare(b.member))) out.push({ kind: "fn", fn, label: member, depth: depth + 1 });
 }
 
-/** The functions as a tree: packages and source files, or namespaces and classes, then the functions that belong to neither. */
-function fileRows(fns: readonly Fn[], nameOf: (addr: string) => string, folded: ReadonlySet<string>): readonly FnRow[] {
-  const root: TreeNode = { name: "", path: "", sep: "", tree: "folder", count: 0, children: new Map(), fns: [] };
+/** One origin's functions as a tree: packages and source files, or namespaces and classes, then the rest, with unnamed ones folded together. */
+function treeRows(fns: readonly Fn[], nameOf: (addr: string) => string, flipped: ReadonlySet<string>, prefix: string, depth: number, bare: readonly string[] = []): readonly FnRow[] {
+  const root: TreeNode = { name: "", path: prefix, sep: "", tree: "folder", count: 0, children: new Map(), fns: [] };
+  for (const file of bare) {
+    let at = root;
+    const segments = file.split("/").filter(Boolean);
+    segments.forEach((segment, ix) => {
+      at = child(at, segment, ".");
+      if (ix === segments.length - 1) at.tree = "file";
+    });
+  }
   const loose: Fn[] = [];
+  const unnamed: Fn[] = [];
   for (const fn of fns) {
-    const placed = place(fn, nameOf(fn.addr));
+    const name = nameOf(fn.addr);
+    const placed = place(fn, name);
     if (!placed) {
-      loose.push(fn);
+      (UNNAMED.test(name) ? unnamed : loose).push(fn);
       continue;
     }
     let at = root;
@@ -118,10 +160,49 @@ function fileRows(fns: readonly Fn[], nameOf: (addr: string) => string, folded: 
   }
   const out: FnRow[] = [];
   const tops = [...root.children.values()].sort((a, b) => FOLDERS_FIRST[a.tree] - FOLDERS_FIRST[b.tree] || a.name.localeCompare(b.name));
-  for (const top of tops) emit(top, 0, folded, out);
+  const alone = tops.length + loose.length + (unnamed.length > 0 ? 1 : 0) === 1;
+  for (const top of tops) emit(top, depth, flipped, out, alone);
   const rank = (fn: Fn): number => (fn.kind === "thunk" ? 1 : 0);
-  for (const fn of [...loose].sort((a, b) => rank(a) - rank(b) || byName(nameOf)(a, b))) out.push({ kind: "fn", fn, label: nameOf(fn.addr), depth: 0 });
+  for (const fn of [...loose].sort((a, b) => rank(a) - rank(b) || byName(nameOf)(a, b))) out.push({ kind: "fn", fn, label: nameOf(fn.addr), depth });
+  if (unnamed.length > 0) {
+    const path = `${prefix}/#unnamed`;
+    const open = openAt(path, flipped, alone);
+    out.push({ kind: "node", path, name: "Unnamed", tree: "folder", ext: "", depth, count: unnamed.length, open });
+    if (open) for (const fn of [...unnamed].sort((a, b) => (BigInt(a.addr) < BigInt(b.addr) ? -1 : 1))) out.push({ kind: "fn", fn, label: nameOf(fn.addr), depth: depth + 1 });
+  }
   return out;
+}
+
+/** Your code first, then libraries, imports and runtime code, each under its own folded heading; Your code starts open when it's the only way in. */
+function fileRows(fns: readonly Fn[], nameOf: (addr: string) => string, flipped: ReadonlySet<string>, yoursOpen: boolean, bare: readonly string[]): readonly FnRow[] {
+  const byOrigin = new Map<Origin, Fn[]>();
+  for (const fn of fns) {
+    const origin = originOf(fn, nameOf(fn.addr));
+    const list = byOrigin.get(origin) ?? [];
+    list.push(fn);
+    byOrigin.set(origin, list);
+  }
+  const bareBy = new Map<Origin, string[]>();
+  for (const file of bare) {
+    const origin: Origin = LIBRARY_PACKAGE.test(file) ? "libraries" : "yours";
+    bareBy.set(origin, [...(bareBy.get(origin) ?? []), file]);
+  }
+  const origins = ORIGINS.filter((origin) => byOrigin.has(origin) || bareBy.has(origin));
+  if (origins.length <= 1) return treeRows(fns, nameOf, flipped, "", 0, bare);
+  return origins.flatMap((origin): readonly FnRow[] => {
+    const list = byOrigin.get(origin) ?? [];
+    const path = `#${origin}`;
+    const open = openAt(path, flipped, yoursOpen && origin === "yours");
+    const head: FnRow = { kind: "node", path, name: ORIGIN_LABEL[origin], tree: "group", ext: "", depth: 0, count: list.length, open };
+    return open ? [head, ...treeRows(list, nameOf, flipped, path, 0, bareBy.get(origin) ?? [])] : [head];
+  });
+}
+
+/** Where a search match lives, so a flat result list still says which package or class, and whether it's your code. */
+function whereOf(fn: Fn, name: string): string {
+  const origin = originOf(fn, name);
+  const owner = fn.file ? fn.file.replace(/\/[^/]*$/, "").replaceAll("/", ".") : (splitOwner(name)?.owner ?? "");
+  return owner ? `${owner} · ${ORIGIN_LABEL[origin].toLowerCase()}` : ORIGIN_LABEL[origin];
 }
 
 /** The function list as the sidebar draws it: filtered, then as a file tree or sorted flat. */
@@ -131,19 +212,30 @@ export function functionRows(fns: readonly Fn[], options: {
   readonly query: string;
   readonly show: FnShow;
   readonly sort: FnSort;
-  readonly folded: ReadonlySet<string>;
+  /** Groups and folders the user clicked away from how they start. */
+  readonly flipped: ReadonlySet<string>;
+  /** Your code starts open, for a binary with no source files to start from. */
+  readonly yoursOpen?: boolean;
+  /** Decompiled files with no functions of their own (Android R classes, interfaces, constants), listed under their package. */
+  readonly bareFiles?: readonly string[];
 }): readonly FnRow[] {
-  const { nameOf, renamed, query, show, sort, folded } = options;
+  const { nameOf, renamed, query, show, sort, flipped, yoursOpen = false, bareFiles = [] } = options;
   const needle = query.trim().toLowerCase();
   const shown = fns.filter((fn) => {
     if (show === "renamed" && !renamed.has(fn.addr)) return false;
     if (show === "imports" && fn.kind !== "thunk") return false;
+    if (show === "yours" && originOf(fn, nameOf(fn.addr)) !== "yours") return false;
     return !needle || nameOf(fn.addr).toLowerCase().includes(needle) || fn.addr.includes(needle) || (fn.file?.toLowerCase().includes(needle) ?? false);
   });
   const flat = (list: readonly Fn[]): readonly FnRow[] => list.map((fn) => ({ kind: "fn", fn, label: nameOf(fn.addr), depth: 0 }));
   if (sort === "address") return flat([...shown].sort((a, b) => (BigInt(a.addr) < BigInt(b.addr) ? -1 : 1)));
   if (sort === "name") return flat([...shown].sort(byName(nameOf)));
-  return fileRows(shown, nameOf, folded);
+  if (needle) {
+    const yoursFirst = (fn: Fn): number => (originOf(fn, nameOf(fn.addr)) === "yours" ? 0 : 1);
+    return [...shown].sort((a, b) => yoursFirst(a) - yoursFirst(b) || byName(nameOf)(a, b)).map((fn) => ({ kind: "fn", fn, label: nameOf(fn.addr), depth: 0, where: whereOf(fn, nameOf(fn.addr)) }));
+  }
+  const bare = show === "all" ? bareFiles : show === "yours" ? bareFiles.filter((file) => !LIBRARY_PACKAGE.test(file)) : [];
+  return fileRows(shown, nameOf, flipped, yoursOpen, bare);
 }
 
 export type SourceNode = {

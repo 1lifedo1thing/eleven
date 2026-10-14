@@ -11,6 +11,7 @@ import type { Program } from "../src/workbench/model";
 import { WorkbenchView } from "../src/workbench/Workbench";
 import { NO_GPU, SAMPLE_PROGRAM } from "./fixtures/sampleProgram";
 import { Screen } from "./harness";
+import { findFunction, showFunctions } from "./fixtures/sidebar";
 
 const retyped: (readonly [string, CodeType | null])[] = [];
 
@@ -70,6 +71,7 @@ function pick(label: string): void {
 }
 
 test("types: nothing in Change type is left for later", async () => {
+  await showFunctions(screen);
   await screen.until(() => screen.labelled("function entry") !== null, 20_000);
   screen.clickLabel("function entry");
   await screen.until(() => screen.labelled("Listing view") !== null, 10_000);
@@ -110,6 +112,6 @@ test("types: Procedure adds the function to the list", async () => {
   rightClickText("0x640");
   await screen.until(() => changeType().length > 0, 5_000);
   pick("Procedure");
-  await screen.until(() => screen.labelled("function FUN_100000980") !== null, 5_000);
+  await findFunction(screen, "FUN_100000980");
   expect(retyped.at(-1)).toEqual(["0x100000980", "procedure"]);
 }, 60_000);

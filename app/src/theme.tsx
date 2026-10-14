@@ -22,6 +22,7 @@ export const DARK = {
   deep2: "#0d0d0d",
   raised: "#141414",
   raised2: "#1c1c1c",
+  well: "#141414",
   fill: "#1f1f1f",
   fill2: "#222222",
   sel: "#262626",
@@ -69,6 +70,7 @@ export const LIGHT: Palette = {
   deep2: "#fafaf9",
   raised: "#f7f7f6",
   raised2: "#f1f1ef",
+  well: "#f7f7f6",
   fill: "#ececea",
   fill2: "#e9e9e7",
   sel: "#e6e6e4",
@@ -105,6 +107,17 @@ export const LIGHT: Palette = {
   ring: "rgba(0,0,0,0.08)",
   icon: "icon-light.png",
 };
+
+/** Solid greys pick up the wallpaper's tint through the glass and fade; text there is see-through white (or black), stronger as the window gets clearer. */
+export function onGlass(p: Palette, transparency = 30): Palette {
+  const dark = p === DARK;
+  const clearer = Math.min(1, Math.max(0, (transparency - 30) / 70));
+  const tint = (alpha: number, boost = 0): string => `rgba(${dark ? "255,255,255" : "0,0,0"},${Math.min(1, alpha + boost * clearer).toFixed(2)})`;
+  const glass = dark
+    ? { text: tint(0.92, 0.06), text3: tint(0.86, 0.08), text4: tint(0.74, 0.1), muted: tint(0.64, 0.12), faint: tint(0.5, 0.14), fill: tint(0.07), fill2: tint(0.09), sel: tint(0.09), sel2: tint(0.13), line2: tint(0.1), line3: tint(0.16), well: tint(0.05), glassTile: tint(0.08), errBg: "rgba(224,108,117,0.1)", errLine: "rgba(224,108,117,0.3)" }
+    : { text: tint(0.88, 0.08), text3: tint(0.8, 0.1), text4: tint(0.7, 0.12), muted: tint(0.62, 0.14), faint: tint(0.5, 0.16), fill: tint(0.05), fill2: tint(0.07), sel: tint(0.07), sel2: tint(0.1), line2: tint(0.1), line3: tint(0.16), well: tint(0.04), glassTile: tint(0.06), errBg: "rgba(192,57,43,0.07)", errLine: "rgba(192,57,43,0.25)" };
+  return { ...p, ...glass };
+}
 
 const clamp = (value: number): number => Math.min(100, Math.max(0, value));
 

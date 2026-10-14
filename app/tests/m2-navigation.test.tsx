@@ -7,6 +7,7 @@ import { dispatchShortcut } from "../src/lib/shortcuts";
 import { prepareTarget } from "../src/engine/target";
 import { adoptToolchain } from "../src/engine/toolchain";
 import { Screen } from "./harness";
+import { showFunctions } from "./fixtures/sidebar";
 
 let screen: Screen;
 
@@ -22,7 +23,7 @@ beforeAll(async () => {
 afterAll(() => screen.unmount());
 
 test("back and forward walk the functions you visited", async () => {
-  await screen.until(() => screen.text().includes("134"));
+  await showFunctions(screen);
   await screen.until(() => screen.labelled("function FUN_1000016d8") !== null);
   screen.clickLabel("function FUN_1000016d8");
   await screen.until(() => currentView().fn === "FUN_1000016d8");

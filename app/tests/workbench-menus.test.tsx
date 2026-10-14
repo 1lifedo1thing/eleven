@@ -8,6 +8,7 @@ import { DARK, ThemeContext } from "../src/theme";
 import { WorkbenchView } from "../src/workbench/Workbench";
 import { NO_GPU, SAMPLE_PROGRAM } from "./fixtures/sampleProgram";
 import { Screen } from "./harness";
+import { clearFilter, findFunction } from "./fixtures/sidebar";
 
 function SampleBench(): ReactElement {
   const chat = useChat(null, () => {});
@@ -83,6 +84,7 @@ test("menus: a call opens in a split from its menu", async () => {
 
 test("menus: a tab offers to close the others", async () => {
   const preview = "FUN_1000016d8 (preview, click again to keep it open)";
+  await findFunction(screen, "FUN_1000016d8");
   screen.clickLabel("function FUN_1000016d8");
   await screen.until(() => screen.labelled(preview) !== null, 5_000);
   rightClickLabel(preview);
@@ -94,6 +96,7 @@ test("menus: a tab offers to close the others", async () => {
   expect(menuLabels()).not.toContain("Close other tabs");
   screen.clickLabel("Close");
   await screen.until(() => screen.labelled(preview) === null, 5_000);
+  clearFilter(screen);
 }, 60_000);
 
 test("menus: an assembly line takes a comment that shows at the end of the line", async () => {
@@ -111,6 +114,7 @@ test("menus: an assembly line takes a comment that shows at the end of the line"
 }, 60_000);
 
 test("kit: a rename with spaces shows what to type instead and isn't saved", async () => {
+  await findFunction(screen, "FUN_1000016d8");
   rightClickLabel("function FUN_1000016d8");
   await screen.until(() => menuLabels().includes("Rename FUN_1000016d8"), 5_000);
   screen.clickLabel("Rename FUN_1000016d8");
@@ -123,7 +127,6 @@ test("kit: a rename with spaces shows what to type instead and isn't saved", asy
 }, 60_000);
 
 test("kit: a filter that matches nothing says what to try", async () => {
-  screen.type("Filter functions", "z z q q");
-  await screen.until(() => screen.text().includes("No functions match “zzqq”"), 5_000);
-  expect(screen.text()).toContain("Try part of an address, like 4088");
+  screen.type("Filter functions", "cmd-a backspace z z q q");
+  await screen.until(() => screen.text().includes("No functions match. Press ↩ to ask the agent."), 5_000);
 }, 60_000);

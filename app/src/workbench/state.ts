@@ -94,7 +94,13 @@ export type FindMode = "text" | "regex" | "hex" | "number";
 
 export type UndoToast = { readonly text: string; readonly undo: (() => void) | null; readonly seq: number };
 
-export type NavSection = "threads" | "work" | "data" | "source" | "functions" | "gpu" | "model" | "blocks";
+const NAV_SECTIONS = ["threads", "work", "data", "source", "functions", "gpu", "model", "blocks"] as const;
+
+export type NavSection = (typeof NAV_SECTIONS)[number];
+
+export function isNavSection(value: string): value is NavSection {
+  return NAV_SECTIONS.some((section) => section === value);
+}
 
 function modeFor(view: Settings["firstView"]): CodeMode {
   switch (view) {
@@ -130,7 +136,7 @@ export function initialState(panes: readonly Pane[], tree: PaneTree = rowOf(pane
   const trailTimes = trail.map(() => Date.now());
   return {
     panes, tree, focus: 0, seq: 10, filter: "", names: new Map(), bookmarks: [], notes: new Map(), trail, trailTimes, at: trail.length - 1,
-    sidebarOpen: true, docks, rightOpen: docks.right.length > 0, bottomOpen: false, right: docks.right[0] ?? "agent", bottom: docks.bottom[0] ?? "refs", showBytes: false, linked: false, breakpoints: [], navClosed: ["work"], sizes: loadSizes(), resizing: null, paneDrag: null,
+    sidebarOpen: true, docks, rightOpen: docks.right.length > 0, bottomOpen: false, right: docks.right[0] ?? "agent", bottom: docks.bottom[0] ?? "refs", showBytes: false, linked: false, breakpoints: [], navClosed: ["functions"], sizes: loadSizes(), resizing: null, paneDrag: null,
     renaming: null, renameDraft: "", patching: null, patchDraft: "", pickerOpen: false,
     paletteOpen: false, paletteQuery: "",
     comments: new Map(), colors: new Map(), types: new Map(), formats: new Map(), revision: 0, selected: null, commenting: null, commentDraft: "", refsOf: null, toast: null,
@@ -449,7 +455,7 @@ export function useWorkbenchState(panes: readonly Pane[], docks: Docks): Workben
   return {
     s,
     patch,
-    reset: (next: readonly Pane[]) => setS((prev) => ({ ...initialState(next, undefined, prev.docks), paletteOpen: prev.paletteOpen, paletteQuery: prev.paletteQuery })),
+    reset: (next: readonly Pane[]) => setS((prev) => ({ ...initialState(next, undefined, prev.docks), paletteOpen: prev.paletteOpen, paletteQuery: prev.paletteQuery, navClosed: prev.navClosed })),
     open: (target: TabTarget, preview: boolean) => setS((prev) => {
       const opened = openIn(prev, target, preview);
       return target.kind === "fn" ? visit(opened, target.addr) : opened;
