@@ -6,7 +6,9 @@ import * as engine from "../src/engine/ask";
 import type { RewriteProgress } from "../src/engine/rewrite";
 import { useChat } from "../src/chat/useChat";
 import { loadProject } from "../src/engine/project";
+import { comboFor, parseCombo } from "../src/keys/keymaps";
 import { dispatchShortcut } from "../src/lib/shortcuts";
+import { currentSettings } from "../src/settings/store";
 import { DARK, ThemeContext } from "../src/theme";
 import { quickSetup } from "../src/engine/warm";
 import { askRange } from "../src/workbench/ask/place";
@@ -112,6 +114,13 @@ afterAll(() => screen.unmount());
 const key = (name: string, cmd: boolean): void =>
   dispatchShortcut({ elementId: 0, eventType: "keyDown", key: name, modifiers: { cmd, ctrl: false, alt: false, shift: false } });
 
+/** Presses whatever the agent panel shortcut is in the current keymap. */
+function pressAgentShortcut(): void {
+  const settings = currentSettings();
+  const { mods, key: name } = parseCombo(comboFor("agent", settings.keymap ?? "eleven", settings.shortcuts));
+  dispatchShortcut({ elementId: 0, eventType: "keyDown", key: name, modifiers: { cmd: mods.includes("cmd"), ctrl: mods.includes("ctrl"), alt: mods.includes("alt"), shift: mods.includes("shift") } });
+}
+
 /** Clicks a line's number, the way you pick whole lines. */
 function clickGutter(number: number, shift = false): void {
   const id = screen.labelled(`Line ${number}`);
@@ -152,10 +161,10 @@ test("select lines, Explain, see the answer under them, accept its rename, pin i
   expect(screen.labelled("Has a pinned answer")).not.toBeNull();
 }, 60_000);
 
-test("⌘L asks about the picked line, and a typed follow-up quotes the same line", async () => {
+test("the agent shortcut asks about the picked line, and a typed follow-up quotes the same line", async () => {
   clickGutter(17);
   await screen.until(() => screen.labelled("Ask about the selection") !== null, 5_000);
-  key("l", true);
+  pressAgentShortcut();
   await screen.until(() => screen.labelled("Ask about line 17") !== null, 5_000);
   expect(screen.labelled("Your question about the selection")).not.toBeNull();
   screen.type("Your question about the selection", "w h y space s o ? enter");
