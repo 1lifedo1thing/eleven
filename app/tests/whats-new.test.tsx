@@ -15,7 +15,6 @@ process.env.ELEVEN_SUPPORT = mkdtempSync(join(tmpdir(), "eleven-news-"));
 
 function Card(): ReactElement {
   const [open, setOpen] = useState(!isNewsDismissed(LATEST_NEWS.id));
-  const [picked, setPicked] = useState("nothing");
   const close = (): void => {
     dismissNews(LATEST_NEWS.id);
     setOpen(false);
@@ -23,8 +22,7 @@ function Card(): ReactElement {
   return (
     <ThemeContext.Provider value={{ p: DARK, appearance: "Dark", setAppearance: () => {} }}>
       <div style={{ position: "relative", display: "flex", width: 600, height: 600 }}>
-        <div>{`Picked ${picked}`}</div>
-        {open && <WhatsNew news={LATEST_NEWS} onClose={close} onAction={() => setPicked("connect")} />}
+        {open && <WhatsNew news={LATEST_NEWS} onClose={close} />}
       </div>
     </ThemeContext.Provider>
   );
@@ -48,14 +46,14 @@ test("what's new: the card opens on the newest news, one of several", async () =
   expect(screen.text()).toContain(`What's new · 1 of ${NEWS.length}`);
 });
 
-test("what's new: you can page through the cards, and a card's own button still works", async () => {
+test("what's new: you can page through the cards, and a plain card's button moves on", async () => {
   screen.clickLabel("Next");
   await screen.until(() => screen.text().includes(`2 of ${NEWS.length}`), 5_000);
-  const agents = NEWS.findIndex((item) => item.action.kind === "agents");
-  screen.clickLabel(`Card ${agents + 1} of ${NEWS.length}`);
-  await screen.until(() => screen.text().includes(NEWS[agents]?.title ?? "?"), 5_000);
-  screen.click("Connect");
-  await screen.until(() => screen.text().includes("Picked connect"), 5_000);
+  const plain = NEWS.findIndex((item, index) => item.action.kind === "none" && index < NEWS.length - 1);
+  screen.clickLabel(`Card ${plain + 1} of ${NEWS.length}`);
+  await screen.until(() => screen.text().includes(NEWS[plain]?.title ?? "?"), 5_000);
+  screen.click("Next");
+  await screen.until(() => screen.text().includes(`${plain + 2} of ${NEWS.length}`), 5_000);
 });
 
 test("what's new: a settings button opens that Settings page and closes the card", async () => {

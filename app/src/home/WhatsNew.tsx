@@ -99,9 +99,8 @@ function Pager({ at, count, onGo }: { readonly at: number; readonly count: numbe
 }
 
 /** Aside-style announcement cards that float over the sidebar, newest first, until closed or acted on. */
-export function WhatsNew({ news, onAction, onClose }: {
+export function WhatsNew({ news, onClose }: {
   readonly news: News;
-  readonly onAction: () => void;
   readonly onClose: () => void;
 }): ReactElement {
   const { p } = useTheme();
@@ -111,8 +110,6 @@ export function WhatsNew({ news, onAction, onClose }: {
   const act = (): void => {
     const action = item.action;
     switch (action.kind) {
-      case "agents":
-        return onAction();
       case "settings":
         onClose();
         return openSettings(action.page);

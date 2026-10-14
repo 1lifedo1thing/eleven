@@ -10,9 +10,8 @@ export type NewsArt =
   | { readonly kind: "logos"; readonly files: readonly string[] }
   | { readonly kind: "shot"; readonly file: string };
 
-/** What the card's button does: the agent hookup Home already wires, a Settings page, or nothing. */
+/** What the card's button does: open a Settings page, or nothing. */
 export type NewsAction =
-  | { readonly kind: "agents"; readonly label: string }
   | { readonly kind: "settings"; readonly label: string; readonly page: Page }
   | { readonly kind: "none" };
 
@@ -27,32 +26,53 @@ export type News = {
 /** Newest first; the card opens on the first one. */
 export const NEWS: readonly News[] = [
   {
-    id: "agents-first",
-    title: "Your agents work in the code",
-    body: "The workbench now opens on your agents. Run more than one on the same app, and each keeps its own chat next to the code.",
-    art: { kind: "logos", files: ["agents/claude-acp.svg", "news/codex.svg", "agents/gemini.svg", "agents/cursor.svg"] },
-    action: { kind: "agents", label: "Connect an agent" },
+    id: "ask-about-lines",
+    title: "Ask about any line",
+    body: "Click line numbers in any code view, then Ask or Explain. The answer opens right under the lines, and a suggested rename is one click away.",
+    art: { kind: "shot", file: "ask.png" },
+    action: { kind: "settings", label: "Pick the model that answers", page: "agents" },
   },
   {
-    id: "agents-ask-first",
-    title: "Agents suggest, you decide",
-    body: "When an agent wants to rename something or patch bytes, it asks you first. Anything you accept can be undone with ⌘Z.",
-    art: { kind: "shot", file: "permissions.png" },
-    action: { kind: "settings", label: "Choose what agents can do", page: "permissions" },
-  },
-  {
-    id: "rizin-first",
-    title: "Apps open in seconds",
-    body: "Eleven now reads with Rizin first, so most apps open in a few seconds and there's no Java to install. Ghidra is still there for its deeper pseudocode.",
-    art: { kind: "shot", file: "engines.png" },
-    action: { kind: "settings", label: "Engine settings", page: "engines" },
-  },
-  {
-    id: "eleven-projects",
-    title: "Every app is a project",
-    body: "Each app gets its own .eleven file in Documents/Eleven. Your chats, renames, notes and patches are all there when you open it again.",
-    art: { kind: "shot", file: "projects.png" },
+    id: "source-files",
+    title: "Get the source back",
+    body: "Every source file the app was built from opens as a tab. Your agent can recreate a whole file, with each function linked back to its code.",
+    art: { kind: "logos", files: ["icons/lang-swift.svg", "icons/lang-objc.svg", "icons/lang-java.svg", "icons/lang-kotlin.svg"] },
     action: { kind: "none" },
+  },
+  {
+    id: "android-apps",
+    title: "Whole Android apps",
+    body: "APKs open with their smali, resources and string tables. Split bundles like .xapk and .apks open with every split in place.",
+    art: { kind: "logos", files: ["formats/android.svg"] },
+    action: { kind: "none" },
+  },
+  {
+    id: "binary-diffs",
+    title: "Compare two builds",
+    body: "Pick Compare with another binary in ⌘K to see which functions were added, removed or changed, shown like a code review.",
+    art: { kind: "logos", files: ["icons/binary.svg", "icons/split.svg"] },
+    action: { kind: "none" },
+  },
+  {
+    id: "gpu-kernels",
+    title: "CUDA and HIP kernels",
+    body: "Read PTX with highlighting and notes beside the tricky parts, or have your agent rewrite a kernel as CUDA C++, HIP or Metal.",
+    art: { kind: "logos", files: ["formats/nvidia.svg", "formats/amd.svg"] },
+    action: { kind: "none" },
+  },
+  {
+    id: "model-files",
+    title: "Open model files",
+    body: "GGUF, ONNX, PyTorch, safetensors and Core ML files open in the workbench, with their layers and tensors next to your agent.",
+    art: { kind: "logos", files: ["formats/llama-cpp.svg", "formats/onnx.svg", "formats/pytorch.svg", "formats/huggingface.svg"] },
+    action: { kind: "none" },
+  },
+  {
+    id: "window-glass",
+    title: "Tune the glass",
+    body: "Choose how much of your desktop shows through the window and how blurred it is. All the way down is solid.",
+    art: { kind: "shot", file: "glass.png" },
+    action: { kind: "settings", label: "Adjust the glass", page: "appearance" },
   },
 ];
 
@@ -60,7 +80,7 @@ export const LATEST_NEWS: News = NEWS[0] ?? {
   id: "none",
   title: "",
   body: "",
-  art: { kind: "logos", files: ["agents/claude-acp.svg", "news/codex.svg", "agents/gemini.svg", "agents/cursor.svg"] },
+  art: { kind: "logos", files: [] },
   action: { kind: "none" },
 };
 
