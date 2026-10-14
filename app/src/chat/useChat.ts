@@ -8,6 +8,7 @@ import { documentPath } from "../engine/document";
 import { listProjects, onProjectListChange, type ProjectEntry, projectId, rememberProject } from "../engine/project";
 import { prepareTarget, type Target } from "../engine/target";
 import { errorMessage } from "../lib/guards";
+import { pickToOpen } from "../lib/pick";
 import { currentSettings, loadSettings, saveSettings, useSettings } from "../settings/store";
 import { archsOf } from "../welcome/files";
 import type { SliceChoice } from "../welcome/SliceDialog";
@@ -256,9 +257,12 @@ export function useChat(target: Target | null, onTarget: (target: Target | null)
     }
   };
   const openFile = async (): Promise<void> => {
-    const paths = await renderer?.promptForPaths?.({ files: true, directories: true, prompt: "Open" });
-    const first = paths?.[0];
-    if (first) choose(first);
+    try {
+      const first = await pickToOpen(renderer, "Open");
+      if (first) choose(first);
+    } catch (err) {
+      thread.note(`Couldn't show the file picker. ${errorMessage(err)}`);
+    }
   };
   const pickAgent = (id: string): void => {
     if (id === agentAt(tabs.active).id) return;

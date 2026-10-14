@@ -42,6 +42,7 @@ import { DEFAULT_SIZES, onLayoutReset } from "./sizes";
 import { loadThreadTabs, saveThreadTabs } from "./threadTabs";
 import { SliceOverlay } from "../welcome/SliceDialog";
 import { openAsk } from "./ask/place";
+import { pickToOpen } from "../lib/pick";
 
 /** The window's own margins around the editor card. */
 const EDGES = 24;
@@ -172,8 +173,7 @@ function useBenchValue(program: Program, onBack: () => void, openTarget: (target
     wb.patch({ paletteOpen: false });
     void (async (): Promise<void> => {
       try {
-        const paths = await renderer?.promptForPaths?.({ files: true, directories: true, prompt: "Compare with" });
-        const first = paths?.[0];
+        const first = await pickToOpen(renderer, "Compare with");
         if (!first) return;
         const loaded = await loadProgram(prepareTarget(first));
         setCompare(loaded);

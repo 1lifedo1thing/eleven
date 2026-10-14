@@ -9,6 +9,7 @@ import type { Target } from "../engine/target";
 import { errorMessage } from "../lib/guards";
 import { useCommand } from "../lib/shortcuts";
 import type { Bench } from "./parts";
+import { pickToOpen } from "../lib/pick";
 
 const AUTOSAVE_MS = 2000;
 
@@ -29,9 +30,12 @@ export function useOpenInWorkbench(bench: Bench): (path: string) => void {
   };
   useCommand("open", () => {
     void (async (): Promise<void> => {
-      const paths = await renderer?.promptForPaths?.({ files: true, directories: true, prompt: "Open" });
-      const first = paths?.[0];
-      if (first) open(first);
+      try {
+        const first = await pickToOpen(renderer, "Open");
+        if (first) open(first);
+      } catch (err) {
+        wb.notify(`Couldn't show the file picker. ${errorMessage(err)}`, null);
+      }
     })();
   });
   return open;
