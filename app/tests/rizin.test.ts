@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 
-import { rizinBytes, rizinDisassembly, rizinFunctions, rizinSegments, rizinStrings } from "../src/engine/rizin";
+import { rizinBytes, rizinDisassembly, rizinEntry, rizinFunctions, rizinSegments, rizinStrings } from "../src/engine/rizin";
 import { activeBackend, ENGINES, setEnabled } from "../src/analysis/engines";
 import { prepareTarget } from "../src/engine/target";
 import { loadProgram } from "../src/workbench/program";
@@ -28,6 +28,13 @@ function rizinInstalled(): boolean {
 }
 
 const run = rizinInstalled() ? test : test.skip;
+
+test("rizin reading starts at main, then the entry point, then the first real function", () => {
+  expect(rizinEntry([{ addr: "0x1", name: "entry0", kind: "function" }, { addr: "0x2", name: "main", kind: "function" }])?.name).toBe("main");
+  expect(rizinEntry([{ addr: "0x1", name: "sym.imp.printf", kind: "thunk" }, { addr: "0x2", name: "entry0", kind: "function" }])?.name).toBe("entry0");
+  expect(rizinEntry([{ addr: "0x1", name: "sym.imp.printf", kind: "thunk" }, { addr: "0x2", name: "fcn.00002", kind: "function" }])?.name).toBe("fcn.00002");
+  expect(rizinEntry([])).toBeNull();
+});
 
 run("rizin backend: reads functions, strings, segments and bytes with no JVM", async () => {
   const fixture = ghidraBinary("linux_x86_64", (name) => !name.includes("."));

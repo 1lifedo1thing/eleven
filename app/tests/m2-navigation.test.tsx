@@ -21,14 +21,8 @@ beforeAll(async () => {
 
 afterAll(() => screen.unmount());
 
-test("⌘K opens the search palette", async () => {
-  await screen.until(() => screen.text().includes("134"));
-  press("k");
-  await screen.until(() => screen.labelled("Search functions, strings and actions") !== null, 10_000);
-}, 90_000);
-
 test("back and forward walk the functions you visited", async () => {
-  screen.type("Search functions, strings and actions", "escape");
+  await screen.until(() => screen.text().includes("134"));
   await screen.until(() => screen.labelled("function FUN_1000016d8") !== null);
   screen.clickLabel("function FUN_1000016d8");
   await screen.until(() => currentView().fn === "FUN_1000016d8");

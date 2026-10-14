@@ -1,7 +1,8 @@
 import { expect, test } from "bun:test";
 
+import type { SessionOption } from "../src/agents/events";
 import { sourcesOf } from "../src/chat/Sources";
-import type { Block } from "../src/chat/thread";
+import { type Block, EMPTY_THREAD, threadReducer } from "../src/chat/thread";
 
 const text = (value: string): Block => ({ kind: "text", text: value });
 
@@ -21,4 +22,15 @@ test("sources: a page the agent fetched counts, and a repeat link adds its title
 
 test("sources: no links, no sources", () => {
   expect(sourcesOf([text("FUN_100004088 prints usage and exits.")])).toEqual([]);
+});
+
+const model: SessionOption = { id: "model", name: "Model", category: "model", current: "flash", choices: [{ value: "flash", name: "Deepseek Flash Medium", description: null }], legacyMode: false };
+
+test("thread: switching agents drops the old agent's model, mode and commands", () => {
+  const ready = threadReducer(threadReducer(EMPTY_THREAD, { type: "event", event: { kind: "connected", agent: "DeepSeek" }, at: 0 }), { type: "event", event: { kind: "options", options: [model] }, at: 0 });
+  expect(ready.options).toEqual([model]);
+  const switched = threadReducer(ready, { type: "switchAgent" });
+  expect(switched.options).toEqual([]);
+  expect(switched.commands).toEqual([]);
+  expect(switched.agent).toEqual({ kind: "idle" });
 });

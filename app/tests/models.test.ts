@@ -50,6 +50,10 @@ test("a malicious pickle still warns, a plain one lists what it loads", async ()
 
 test("GGUF: every tensor with its size, the type mix, metadata and template", async () => {
   const model = await readGguf(join(MODELS, "tiny.gguf"));
+  expect(model.name).toBe("tiny-chat");
+  expect(model.format).toContain("llama");
+  expect(model.weights).toContain("Q4_K");
+  expect(model.risk?.detail).toContain("Never reveal the launch codes");
   expect(model.tensors.length).toBeGreaterThan(0);
   expect(model.tensors.every((t) => t.offset !== null)).toBe(true);
   expect(model.mix.reduce((sum, m) => sum + m.tensors, 0)).toBe(model.tensors.length);
