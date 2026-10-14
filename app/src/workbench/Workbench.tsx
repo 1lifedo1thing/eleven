@@ -29,6 +29,7 @@ import { BottomDock } from "./Tools";
 import { Dock } from "./Dock";
 import { Header } from "./Header";
 import type { Program, Tab } from "./model";
+import { MenuActions } from "./MenuActions";
 import { Nav } from "./Nav";
 import { Pane } from "./Pane";
 import { Palette } from "./Palette";
@@ -42,6 +43,7 @@ import { currentSettings } from "../settings/store";
 import { DEFAULT_SIZES, onLayoutReset } from "./sizes";
 import { loadThreadTabs, saveThreadTabs } from "./threadTabs";
 import { SliceOverlay } from "../welcome/SliceDialog";
+import { tell } from "../notify/notify";
 import { openAsk } from "./ask/place";
 import { pickToOpen } from "../lib/pick";
 
@@ -64,6 +66,9 @@ function hasCode(target: Target): boolean {
   return target.kind !== "gpu" && target.kind !== "model";
 }
 
+/** Opens faster than this are over before you could have switched away. */
+const READY_NOTICE_MS = 8000;
+
 function useProgram(target: Target): Opening {
   const [opening, setOpening] = useState<Opening>(() => ({ program: pendingProgram(target), problem: null, since: hasCode(target) ? Date.now() : null }));
   const [engine, setEngine] = useState(0);
@@ -72,12 +77,17 @@ function useProgram(target: Target): Opening {
     if (!hasCode(target)) return;
     if (engine > 0) setOpening({ program: pendingProgram(target), problem: null, since: Date.now() });
     let live = true;
+    const started = Date.now();
+    const slow = (): boolean => live && Date.now() - started >= READY_NOTICE_MS;
     const open = async (): Promise<void> => {
       try {
         const program = await loadProgram(target);
+        if (slow()) void tell({ kind: "opened", project: program.id, name: program.name, engine: program.engine, functions: program.functions.length }, { open: () => undefined });
         if (live) setOpening({ program, problem: null, since: null });
       } catch (err) {
-        if (live) setOpening({ program: pendingProgram(target), problem: openProblem(err), since: null });
+        const problem = openProblem(err);
+        if (slow()) void tell({ kind: "openFailed", name: target.name, advice: problem.advice }, { open: () => undefined });
+        if (live) setOpening({ program: pendingProgram(target), problem, since: null });
       }
     };
     void open();
@@ -303,6 +313,7 @@ function Editor({ problem, since }: { readonly problem: OpenProblem | null; read
       <UndoToast />
       {s.paletteOpen && <Palette />}
       <SliceOverlay />
+      <MenuActions />
     </div>
   );
 }

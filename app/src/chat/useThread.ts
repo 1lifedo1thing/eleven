@@ -18,7 +18,8 @@ import { androidHint, engineHint } from "../analysis/hint";
 import { activeBackend } from "../analysis/engines";
 import { prepareTarget, type Target } from "../engine/target";
 import { type SavedThread, saveThread } from "./history";
-import { EMPTY_THREAD, isBusy, type Message, threadReducer, type ThreadState } from "./thread";
+import { agentName, EMPTY_THREAD, isBusy, type Message, threadReducer, type ThreadState } from "./thread";
+import { useChatMoments } from "../notify/useChatMoments";
 import { shownText } from "../skills/load";
 import { copyToClipboard, THIS_DEVICE } from "../lib/platform";
 
@@ -176,6 +177,7 @@ export function useThread(agent: AgentEntry, native: NativeCommand | null, targe
   };
 
   const onEvent = (event: AgentEvent): void => {
+    moments.heard(event);
     dispatch({ type: "event", event, at: Date.now() });
     const path = openedPath(event, tools.current);
     if (path) adopt(path);
@@ -270,6 +272,13 @@ export function useThread(agent: AgentEntry, native: NativeCommand | null, targe
     deliver(clean);
   };
 
+  const answer = (index: number, permissionId: number, choice: PermissionChoice | null): void => {
+    session.current?.answer(permissionId, choice?.id ?? null);
+    dispatch({ type: "answered", index, label: choice?.label ?? "Not allowed" });
+    moments.answered(permissionId);
+  };
+  const moments = useChatMoments(state, { id, live, project: target?.name ?? null, agent: agentName(state.agent) ?? agent.name, answer });
+
   const lastUserText = (): string | null => {
     const users = state.messages.filter((m) => m.kind === "user");
     const last = users[users.length - 1];
@@ -287,10 +296,7 @@ export function useThread(agent: AgentEntry, native: NativeCommand | null, targe
       const text = lastUserText();
       if (text) send(text);
     },
-    answer: (index, permissionId, choice) => {
-      session.current?.answer(permissionId, choice?.id ?? null);
-      dispatch({ type: "answered", index, label: choice?.label ?? "Not allowed" });
-    },
+    answer,
     setOption: (option, value) => void ensureSession().setOption(option, value),
     reset: () => {
       stopSession();

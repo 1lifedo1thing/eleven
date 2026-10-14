@@ -9,6 +9,7 @@ import { OS } from "./platform";
 type Handler = () => void;
 
 const bound = new Map<CommandId, Handler[]>();
+const watchers = new Set<() => void>();
 const typed = new Set<number>();
 const MODIFIER_KEYS = new Set(["shift", "control", "ctrl", "alt", "option", "cmd", "command", "meta", "platform", "function", "fn", "capslock"]);
 
@@ -64,14 +65,33 @@ export function runCommand(id: CommandId): void {
   bound.get(id)?.at(-1)?.();
 }
 
+/** Whether something on screen handles the command right now. */
+export function isCommandBound(id: CommandId): boolean {
+  return (bound.get(id)?.length ?? 0) > 0;
+}
+
+/** Calls `changed` whenever a command gains or loses its last handler. */
+export function onCommandsChange(changed: () => void): () => void {
+  watchers.add(changed);
+  return () => {
+    watchers.delete(changed);
+  };
+}
+
+function setHandlers(id: CommandId, handlers: Handler[]): void {
+  const was = isCommandBound(id);
+  bound.set(id, handlers);
+  if (was !== handlers.length > 0) for (const changed of watchers) changed();
+}
+
 export function useCommand(id: CommandId, handler: Handler): void {
   const latest = useRef(handler);
   latest.current = handler;
   useEffect(() => {
     const call: Handler = () => latest.current();
-    bound.set(id, [...(bound.get(id) ?? []), call]);
+    setHandlers(id, [...(bound.get(id) ?? []), call]);
     return () => {
-      bound.set(id, (bound.get(id) ?? []).filter((h) => h !== call));
+      setHandlers(id, (bound.get(id) ?? []).filter((h) => h !== call));
     };
   }, [id]);
 }

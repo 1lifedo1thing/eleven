@@ -81,6 +81,8 @@ export type Settings = {
   readonly lineNumbers: boolean;
   readonly sendKey: "Return" | "Command Return";
   readonly notifyWhenDone: boolean;
+  readonly notifyWhenAsked: boolean;
+  readonly notifyWhenReady: boolean;
   readonly soundWhenAsked: boolean;
   readonly chatHistory: "Short" | "Normal" | "Long";
   readonly openWorkbench: "When the agent opens code" | "Always" | "Only when I ask";
@@ -167,6 +169,8 @@ export const DEFAULT_SETTINGS: Settings = {
   lineNumbers: true,
   sendKey: "Return",
   notifyWhenDone: true,
+  notifyWhenAsked: true,
+  notifyWhenReady: true,
   soundWhenAsked: false,
   chatHistory: "Normal",
   openWorkbench: "When the agent opens code",
@@ -272,6 +276,8 @@ const SETTINGS: z.ZodType<Settings> = z.object({
   lineNumbers: z.boolean().catch(D.lineNumbers),
   sendKey: z.enum(["Return", "Command Return"]).catch(D.sendKey),
   notifyWhenDone: z.boolean().catch(D.notifyWhenDone),
+  notifyWhenAsked: z.boolean().catch(D.notifyWhenAsked),
+  notifyWhenReady: z.boolean().catch(D.notifyWhenReady),
   soundWhenAsked: z.boolean().catch(D.soundWhenAsked),
   chatHistory: z.enum(["Short", "Normal", "Long"]).catch(D.chatHistory),
   openWorkbench: z.enum(["When the agent opens code", "Always", "Only when I ask"]).catch(D.openWorkbench),

@@ -19,7 +19,7 @@ import type { Info } from "./info";
 import type { Action, Confirm, Control, GroupModel, Lead, Option, SettingRowModel } from "./model";
 import type { Page } from "./pages";
 import { DEFAULT_SETTINGS, type PathKey, PERMISSION_TOOLS, type PermissionLevel, type PermissionTool, saveSettings, type Settings, SETTINGS_FILE } from "./store";
-import { openLink, pickPath, showInFinder, tildePath } from "./system";
+import { openLink, pickPath, RELEASE_NOTES, showInFinder, tildePath } from "./system";
 import { ASSETS } from "../lib/assets";
 import { dataRoot, FILE_MANAGER, OS, THIS_DEVICE } from "../lib/platform";
 import { MOD } from "../lib/platform";
@@ -335,6 +335,8 @@ export function buildPages(c: Ctx): Readonly<Record<Page, readonly GroupModel[]>
       { label: "Composer", rows: [seg("sendKey", "Send with", "The other one adds a new line.", ["Return", "Command Return"], { "Command Return": `${MOD.replace("+", "")} Return` })] },
       { label: "Notifications", rows: [
         tg("notifyWhenDone", "Notify me when the agent finishes", "Only when Eleven isn’t the window in front."),
+        tg("notifyWhenAsked", "Notify me when the agent needs my OK", "Allow or refuse right from the notification."),
+        tg("notifyWhenReady", "Notify me when a file is ready", "When reading a big app takes a while."),
         tg("soundWhenAsked", "Play a sound when the agent needs you", "For questions and permission requests."),
       ] },
     ],
@@ -475,7 +477,7 @@ export function buildPages(c: Ctx): Readonly<Record<Page, readonly GroupModel[]>
     about: [
       { label: null, rows: [
         info("Eleven", `Version ${app.version} (${process.arch === "arm64" ? "Apple silicon" : "Intel"}). ${app.short}`, { lead: { kind: "img", src: appIcon(c.icon) }, buttons: app.download ? [btn("Download", () => openLink(app.download ?? ""), "primary")] : [btn("Check for updates", c.checkApp)] }),
-        info("What’s new", "Notes for every release.", { buttons: [btn("Open", () => { openLink("https://github.com/Zfinix/eleven/releases"); c.toast("Opened the release notes"); })] }),
+        info("What’s new", "Notes for every release.", { buttons: [btn("Open", () => { openLink(RELEASE_NOTES); c.toast("Opened the release notes"); })] }),
       ] },
       { label: "Help", rows: [
         info("Run setup again", "Install engines and agents, and pick shortcuts.", { buttons: [btn("Start", c.setup)] }),
@@ -483,6 +485,7 @@ export function buildPages(c: Ctx): Readonly<Record<Page, readonly GroupModel[]>
         info("Settings file", tildePath(SETTINGS_FILE), { mono: true, buttons: [btn(`Show in ${FILE_MANAGER}`, () => showInFinder(SETTINGS_FILE))] }),
       ] },
       { label: "Made with", rows: [
+        info("REA", "Reverse engineer anything. How Eleven and its agents read every app.", { lead: { kind: "img", src: join(ENGINES_DIR, "rea.svg") }, buttons: [btn("Website", () => { openLink("https://github.com/morluto/rea"); c.toast("Opened in your browser"); })] }),
         info("Rizin", "Fast reverse engineering framework.", { lead: { kind: "img", src: ENGINE_LOGO.rizin }, buttons: [btn("Website", () => { openLink("https://rizin.re"); c.toast("Opened in your browser"); })] }),
         info("Ghidra", "Decompiler from the NSA.", { lead: { kind: "img", src: ENGINE_LOGO.ghidra }, buttons: [btn("Website", () => { openLink("https://ghidra-sre.org"); c.toast("Opened in your browser"); })] }),
         info("Agent Client Protocol", "How Eleven talks to every agent.", { lead: { kind: "img", src: join(ENGINES_DIR, "acp-light.png"), darkSrc: join(ENGINES_DIR, "acp-dark.png") }, buttons: [btn("Website", () => { openLink("https://agentclientprotocol.com"); c.toast("Opened in your browser"); })] }),

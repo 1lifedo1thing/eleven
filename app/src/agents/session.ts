@@ -12,7 +12,7 @@ import { reaEnv } from "../engine/rea";
 import type { NativeCommand } from "./detect";
 import type { AgentEvent, PermissionChoice, SessionOption } from "./events";
 import { type Launch, resolveLaunch } from "./launch";
-import { chimeForAnswer, notifyDone } from "./notify";
+import { chimeForAnswer } from "./notify";
 import { isRemembered, rememberAnswer } from "./remembered";
 import { isReadOnly, onlySuggests, permissionTool, REA_SERVER, reaToolName } from "./permissions";
 import { type AgentEntry, shortName } from "./registry";
@@ -257,7 +257,6 @@ export class AgentSession {
       const { connection, sessionId } = await this.session();
       const result = await connection.prompt({ sessionId, prompt: [{ type: "text", text }] });
       this.emit({ kind: "turnEnded", cancelled: result.stopReason === "cancelled" });
-      if (result.stopReason !== "cancelled" && !this.stopped) void notifyDone(this.agent.name);
     } catch (err) {
       await delay(EXIT_GRACE_MS);
       this.fail(`${this.agent.name} stopped: ${errorMessage(err)}`);

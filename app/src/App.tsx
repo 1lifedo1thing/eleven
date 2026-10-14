@@ -5,9 +5,15 @@ import { useLiveChat } from "./bridge/live";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Home } from "./home/Home";
 import { type Chat, useChat } from "./chat/useChat";
-import { useCommand } from "./lib/shortcuts";
+import { type AppItem, type MenuChoice } from "./keys/menus";
+import { runMenuAction } from "./keys/menuActions";
+import { useMenuBar } from "./keys/useMenuBar";
+import { adoptDesktop } from "./lib/native";
+import { listenForReplies, onOpenChat } from "./notify/notify";
+import { runCommand, useCommand } from "./lib/shortcuts";
 import type { Page } from "./settings/pages";
 import { onOpenSettings } from "./settings/open";
+import { openLink, RELEASE_NOTES } from "./settings/system";
 import { SettingsScreen } from "./settings/SettingsScreen";
 import { currentSettings, loadSettings, saveSettings, type Settings, useSettings } from "./settings/store";
 import { listProjects } from "./engine/project";
@@ -127,6 +133,50 @@ export function App({ initial }: { readonly initial: Target | null }): ReactElem
   };
   useCommand("settings", () => openSettingsAt("general"));
   useEffect(() => onOpenSettings(openSettingsAt), []);
+  const desktop = useMemo(() => adoptDesktop(renderer), [renderer]);
+  useEffect(() => (desktop ? listenForReplies(desktop) : undefined), [desktop]);
+  const latestChat = useRef(chat);
+  latestChat.current = chat;
+  useEffect(() => onOpenChat((id) => {
+    latestChat.current.openThread(id);
+    if (here.current.kind === "settings" || here.current.kind === "setup") setScreen(HOME);
+  }), []);
+  const openAppItem = (item: AppItem): void => {
+    switch (item) {
+      case "about":
+      case "updates":
+      case "report":
+        return openSettingsAt("about");
+      case "shortcuts":
+        return openSettingsAt("keyboard");
+      case "whatsNew":
+        return openLink(RELEASE_NOTES);
+      default: {
+        const unhandled: never = item;
+        return unhandled;
+      }
+    }
+  };
+  useMenuBar(desktop, (choice: MenuChoice): void => {
+    switch (choice.kind) {
+      case "command":
+        return runCommand(choice.id);
+      case "action":
+        return runMenuAction(choice.id);
+      case "recent": {
+        const entry = listProjects().find((project) => project.id === choice.id);
+        const opened = entry ? chat.openProject(entry) : null;
+        if (opened) setScreen({ kind: "workbench", target: opened });
+        return;
+      }
+      case "app":
+        return openAppItem(choice.id);
+      default: {
+        const unhandled: never = choice;
+        return unhandled;
+      }
+    }
+  });
   const back = (): void => {
     markWelcomeDone();
     const current = here.current;

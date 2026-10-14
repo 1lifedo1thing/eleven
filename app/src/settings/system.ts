@@ -21,6 +21,8 @@ export function showInFinder(path: string): void {
   reveal(path);
 }
 
+export const RELEASE_NOTES = "https://github.com/Zfinix/eleven/releases";
+
 export function openLink(url: string): void {
   openExternal(url);
 }
