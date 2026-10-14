@@ -298,7 +298,7 @@ export function sourceTree(paths: readonly string[], closed: ReadonlySet<string>
 
 const LOGOS: Readonly<Record<string, string>> = {
   swift: "lang-swift", m: "lang-objc", mm: "lang-objcpp", c: "lang-c", cc: "lang-cpp", cpp: "lang-cpp", cxx: "lang-cpp",
-  h: "lang-h", hh: "lang-hpp", hpp: "lang-hpp", metal: "lang-metal", rs: "lang-rust", go: "lang-go", kt: "lang-kotlin", java: "lang-java",
+  h: "lang-h", hh: "lang-hpp", hpp: "lang-hpp", metal: "lang-metal", rs: "lang-rust", go: "lang-go", kt: "lang-kotlin", java: "lang-java", xml: "lang-xml", json: "lang-json",
 };
 
 export function logoFor(ext: string): string {

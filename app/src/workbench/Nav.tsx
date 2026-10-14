@@ -19,6 +19,7 @@ import { Faint, useSectionOpen } from "./sidebar/parts";
 import { Blocks, InThisModel, Kernels } from "./sidebar/ModelSections";
 import { FileViews, YourWork } from "./sidebar/Sections";
 import { SourceFiles } from "./sidebar/SourceFiles";
+import { Resources } from "./sidebar/Resources";
 import { ProjectSwitcher } from "./sidebar/Top";
 
 const FN_KEY = "fn:";
@@ -98,7 +99,7 @@ function NavList({ view, flipped, hasSources }: { readonly view: FnView; readonl
   const firstMatch = rows.find((row) => row.kind === "fn");
   const fixed = noCode
     ? gpu ? [<Kernels key="kernels" />] : [<InThisModel key="model" />, <Blocks key="blocks" />]
-    : [<YourWork key="work" />, <FileViews key="views" />, <SourceFiles key="source" />, <FunctionsHead key="functions" view={view} first={firstMatch?.kind === "fn" ? firstMatch.fn.addr : null} />];
+    : [<YourWork key="work" />, <FileViews key="views" />, <SourceFiles key="source" />, <Resources key="resources" />, <FunctionsHead key="functions" view={view} first={firstMatch?.kind === "fn" ? firstMatch.fn.addr : null} />];
   const after = searching
     ? [<MatchNote key="note" count={rows.length} />]
     : open && !noCode && rows.length === 0 ? [program.functions.length === 0 ? <Faint key="none" text="Loading functions…" /> : (
@@ -121,7 +122,7 @@ function NavList({ view, flipped, hasSources }: { readonly view: FnView; readonl
   );
 }
 
-/** The workspace sidebar on the window's glass: the project, your work, the file's views, its source files and functions, then Eleven. */
+/** The workspace sidebar on the window's glass: the project, your work, the file's views, its source files, resources and functions, then Eleven. */
 export function Nav(): ReactElement {
   const { wb } = useBench();
   const theme = useTheme();

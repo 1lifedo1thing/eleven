@@ -94,7 +94,7 @@ export type FindMode = "text" | "regex" | "hex" | "number";
 
 export type UndoToast = { readonly text: string; readonly undo: (() => void) | null; readonly seq: number };
 
-const NAV_SECTIONS = ["threads", "work", "data", "source", "functions", "gpu", "model", "blocks"] as const;
+const NAV_SECTIONS = ["threads", "work", "data", "source", "resources", "functions", "gpu", "model", "blocks"] as const;
 
 export type NavSection = (typeof NAV_SECTIONS)[number];
 
