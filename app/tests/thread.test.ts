@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 
 import type { SessionOption } from "../src/agents/events";
+import { translate } from "../src/agents/translate";
 import { sourcesOf } from "../src/chat/Sources";
 import { type Block, EMPTY_THREAD, threadReducer } from "../src/chat/thread";
 
@@ -33,4 +34,12 @@ test("thread: switching agents drops the old agent's model, mode and commands", 
   expect(switched.options).toEqual([]);
   expect(switched.commands).toEqual([]);
   expect(switched.agent).toEqual({ kind: "idle" });
+});
+
+test("thread: an agent notice shows as a note, never inside the reply", () => {
+  const event = translate({ sessionUpdate: "notice", severity: "warning", title: "Fast mode turned off", description: "Requires extra usage to be enabled for this account." }, []);
+  expect(event).toEqual({ kind: "notice", text: "Fast mode turned off. Requires extra usage to be enabled for this account." });
+  if (!event) return;
+  const state = threadReducer(EMPTY_THREAD, { type: "event", event, at: 0 });
+  expect(state.messages).toEqual([{ kind: "note", text: "Fast mode turned off. Requires extra usage to be enabled for this account.", tone: "info" }]);
 });

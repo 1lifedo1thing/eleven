@@ -82,6 +82,8 @@ export function translate(update: acp.SessionNotification["update"], currentMode
       return { kind: "options", options: currentModes.map((option) => (option.legacyMode ? { ...option, current: update.currentModeId } : option)) };
     case "usage_update":
       return { kind: "usage", usage: { used: update.used, size: update.size, cost: costText(update.cost) } };
+    case "notice":
+      return { kind: "notice", text: update.description ? `${update.title}. ${update.description}` : update.title };
     default:
       return null;
   }

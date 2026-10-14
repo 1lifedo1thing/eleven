@@ -188,6 +188,8 @@ function onEvent(state: ThreadState, event: AgentEvent, at: number): ThreadState
       return { ...state, options: event.options };
     case "usage":
       return { ...state, usage: event.usage };
+    case "notice":
+      return { ...state, messages: [...state.messages, { kind: "note", text: event.text, tone: "info" }] };
     case "turnEnded":
       return finishTurn(state, event.cancelled ? "cancelled" : "done", at);
     case "failed": {

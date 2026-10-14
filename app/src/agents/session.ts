@@ -198,7 +198,7 @@ export class AgentSession {
 
   private async start(): Promise<void> {
     this.connection = this.connect(await resolveLaunch(this.agent, this.native));
-    const init = await this.connection.initialize({ protocolVersion: acp.PROTOCOL_VERSION, clientCapabilities: {} });
+    const init = await this.connection.initialize({ protocolVersion: acp.PROTOCOL_VERSION, clientCapabilities: { session: { notices: {} } } });
     const session = await this.connection.newSession({ cwd: this.cwd, mcpServers: this.tools ? toolServers(shortName(this.agent.name), this.chat) : [] });
     this.sessionId = session.sessionId;
     this.emit({ kind: "connected", agent: shortName(init.agentInfo?.title ?? init.agentInfo?.name ?? this.agent.name) });
