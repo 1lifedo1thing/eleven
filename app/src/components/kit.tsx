@@ -4,7 +4,7 @@ import { type ReactElement, type ReactNode, useState } from "react";
 
 import { dashedOutline, usePaintedSize } from "../lib/dashed";
 import { useNow } from "../lib/useNow";
-import { MONO, type Palette, useTheme } from "../theme";
+import { MONO, type Palette, SANS, useTheme } from "../theme";
 import { Icon } from "./ui";
 
 const HOVER = { opacity: 0.72 } as const;
@@ -59,7 +59,7 @@ export function Button({ label, tone, size = "regular", icon = null, disabled = 
 export function Keycap({ text }: { readonly text: string }): ReactElement {
   const { p } = useTheme();
   return (
-    <div aria-label={text} style={{ paddingLeft: 6, paddingRight: 6, paddingTop: 1, paddingBottom: 1, borderWidth: 1, borderColor: p.sel2, borderRadius: 5, fontFamily: MONO, fontSize: 11, color: p.text4, flexShrink: 0 }}>
+    <div aria-label={text} style={{ paddingLeft: 6, paddingRight: 6, paddingTop: 1, paddingBottom: 1, borderWidth: 1, borderColor: p.sel2, borderRadius: 5, fontFamily: SANS, fontSize: 11, color: p.text4, flexShrink: 0 }}>
       {text}
     </div>
   );

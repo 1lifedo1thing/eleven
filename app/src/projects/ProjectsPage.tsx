@@ -16,7 +16,7 @@ import { comboFor, comboText } from "../keys/keymaps";
 import { useSettings } from "../settings/store";
 import { showInFinder } from "../settings/system";
 import { useDropTarget } from "../Shell";
-import { useTheme } from "../theme";
+import { SANS, useTheme } from "../theme";
 import { ago } from "../welcome/files";
 import { FILE_MANAGER } from "../lib/platform";
 
@@ -194,7 +194,7 @@ export function ProjectsPage({ chat, onOpen }: { readonly chat: Chat; readonly o
             <div style={{ flexGrow: 1, minWidth: 0, fontSize: 24, lineHeight: 30, fontWeight: 600, color: p.text }}>Projects</div>
             <div {...drop} onClick={chat.openFile} role="button" aria-label="Open a file" style={{ display: "flex", alignItems: "center", gap: 8, height: 32, flexShrink: 0, paddingLeft: 14, paddingRight: 12, borderRadius: 8, backgroundColor: p.primary, cursor: "pointer", hover: HOVER }}>
               <div style={{ fontWeight: 600, color: p.onPrimary, pointerEvents: "none" }}>Open…</div>
-              <div style={{ fontSize: 11.5, fontWeight: 500, color: p.onPrimary, opacity: 0.55, pointerEvents: "none" }}>{comboText(comboFor("open", settings.keymap ?? "eleven", settings.shortcuts))}</div>
+              <div style={{ fontFamily: SANS, fontSize: 11.5, fontWeight: 500, color: p.onPrimary, opacity: 0.55, pointerEvents: "none" }}>{comboText(comboFor("open", settings.keymap ?? "eleven", settings.shortcuts))}</div>
             </div>
           </div>
           <div style={{ color: p.muted }}>Every app you open gets a project in Documents/Eleven. Renames, notes and chats save as you go.</div>

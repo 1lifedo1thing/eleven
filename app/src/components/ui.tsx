@@ -9,7 +9,7 @@ import type { CommandId } from "../keys/commands";
 import { type Combo, comboFor, comboKeys } from "../keys/keymaps";
 import { ASSETS } from "../lib/assets";
 import { useSettings } from "../settings/store";
-import { DARK, useTheme } from "../theme";
+import { DARK, SANS, useTheme } from "../theme";
 
 const sources = new Map<string, string>();
 
@@ -154,7 +154,7 @@ export function Keys({ combo }: { readonly combo: Combo }): ReactElement | null 
   return (
     <div aria-label={caps.join("")} style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0, pointerEvents: "none" }}>
       {caps.map((cap, index) => (
-        <div key={index} style={{ display: "flex", alignItems: "center", justifyContent: "center", minWidth: 18, height: 18, paddingLeft: 4, paddingRight: 4, borderRadius: 4, backgroundColor: p.fill2, fontSize: 11, lineHeight: 18, color: p.muted, pointerEvents: "none" }}>
+        <div key={index} style={{ display: "flex", alignItems: "center", justifyContent: "center", minWidth: 18, height: 18, paddingLeft: 4, paddingRight: 4, borderRadius: 4, backgroundColor: p.fill2, fontFamily: SANS, fontSize: 11, lineHeight: 18, color: p.muted, pointerEvents: "none" }}>
           {cap}
         </div>
       ))}

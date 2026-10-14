@@ -1,7 +1,7 @@
 import type { EventPayload } from "@gpuix/react";
 import { type ReactElement, useState, useSyncExternalStore } from "react";
 
-import { MONO, useTheme } from "../theme";
+import { SANS, useTheme } from "../theme";
 import { Icon } from "./ui";
 
 export type MenuAction = {
@@ -124,7 +124,7 @@ function Row({ entry, active, open, onRun, onHover, onCloseSub }: {
     <div onClick={press} onMouseEnter={onHover} role="menuitem" aria-label={entry.label} aria-disabled={off} style={{ position: "relative", display: "flex", alignItems: "center", gap: 8, height: 30, flexShrink: 0, paddingLeft: 8, paddingRight: 8, borderRadius: 6, color: off ? p.faint : p.text, ...((active || open) ? { backgroundColor: p.sel } : {}), ...look }}>
       {entry.icon && <Icon name={entry.icon} size={14} color={off ? p.faint : p.text3} />}
       <div style={{ flexGrow: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{entry.label}</div>
-      {hint && <div style={{ flexShrink: 0, paddingLeft: 12, fontSize: 11, color: p.faint, ...(entry.kind === "action" && entry.unavailable ? {} : { fontFamily: MONO }) }}>{hint}</div>}
+      {hint && <div style={{ flexShrink: 0, paddingLeft: 12, fontSize: 11, color: p.faint, fontFamily: SANS }}>{hint}</div>}
       {entry.kind === "submenu" && <Icon name="forward" size={11} color={p.faint} />}
       {entry.kind === "submenu" && open && (
         <anchored deferred occlude priority={3} side="right" align="start" gap={10} fit="switch" style={{ borderRadius: RADIUS }}>

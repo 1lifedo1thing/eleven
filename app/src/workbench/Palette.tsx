@@ -8,7 +8,7 @@ import { patchBytes } from "./patch";
 import { YOU } from "../engine/edits";
 import { loadProject, updateProject } from "../engine/project";
 import { copyText } from "../chat/useThread";
-import { useTheme } from "../theme";
+import { SANS, useTheme } from "../theme";
 import type { CommandId } from "../keys/commands";
 import { HOVER, MONO_STYLE, overlay, useBench } from "./parts";
 import { noteTyping, runCommand } from "../lib/shortcuts";
@@ -165,7 +165,7 @@ function OptionIcon({ option }: { readonly option: Option }): ReactElement {
 function Cap({ cap }: { readonly cap: string }): ReactElement {
   const { p } = useTheme();
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minWidth: 20, height: 20, paddingLeft: 5, paddingRight: 5, borderRadius: 5, backgroundColor: p.glassTile, fontSize: 11.5, color: p.text4, pointerEvents: "none" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minWidth: 20, height: 20, paddingLeft: 5, paddingRight: 5, borderRadius: 5, backgroundColor: p.glassTile, fontFamily: SANS, fontSize: 11.5, color: p.text4, pointerEvents: "none" }}>
       <div>{cap}</div>
     </div>
   );
