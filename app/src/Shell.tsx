@@ -4,7 +4,7 @@ import { createContext, type ReactElement, type ReactNode, useContext } from "re
 import { ContextMenuLayer } from "./components/ContextMenu";
 import { UI_SCALE } from "./settings/look";
 import { useSettings } from "./settings/store";
-import { SANS, useTheme } from "./theme";
+import { glassTint, SANS, useTheme } from "./theme";
 
 const TITLEBAR = 46;
 
@@ -35,7 +35,7 @@ export function Shell({ side, children, onDrop, overlay = null, bare = false }: 
   const card = bare ? {} : { borderWidth: 1, borderColor: p.sel, borderRadius: 12, backgroundColor: p.card };
   return (
     <DropContext.Provider value={drop}>
-      <div {...drop} style={{ display: "flex", userSelect: "none", width: "100%", height: "100%", backgroundColor: settings.windowStyle === "Solid" ? p.win : p.glass, color: p.text, fontFamily: SANS, fontSize: 13.5 * scale, lineHeight: Math.round(20 * scale) }}>
+      <div {...drop} style={{ display: "flex", userSelect: "none", width: "100%", height: "100%", backgroundColor: glassTint(p, settings.transparency), color: p.text, fontFamily: SANS, fontSize: 13.5 * scale, lineHeight: Math.round(20 * scale) }}>
         {side ?? <div style={{ width: 8, flexShrink: 0 }} />}
         <div {...drop} style={{ display: "flex", flexDirection: "column", flexGrow: 1, minWidth: 0, marginTop: side ? 8 : TITLEBAR, marginRight: 8, marginBottom: 8, ...card, overflow: "hidden" }}>
           {children}

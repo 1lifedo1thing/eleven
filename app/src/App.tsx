@@ -1,3 +1,4 @@
+import { useGpuix } from "@gpuix/react";
 import { type ReactElement, useEffect, useMemo, useRef, useState } from "react";
 
 import { useLiveChat } from "./bridge/live";
@@ -11,7 +12,7 @@ import { SettingsScreen } from "./settings/SettingsScreen";
 import { currentSettings, loadSettings, saveSettings, type Settings, useSettings } from "./settings/store";
 import { listProjects } from "./engine/project";
 import { prepareTarget, type Target } from "./engine/target";
-import { type Appearance, paletteFor, ThemeContext } from "./theme";
+import { type Appearance, frostRadius, paletteFor, ThemeContext } from "./theme";
 import { markWelcomeDone, needsWelcome, Setup } from "./welcome/Setup";
 import { Workbench } from "./workbench/Workbench";
 
@@ -97,7 +98,11 @@ export function App({ initial }: { readonly initial: Target | null }): ReactElem
   const here = useRef<Screen>(screen);
   here.current = screen;
   const chatting = chat.thread.state.messages.some((message) => message.kind === "user");
-  const { openWorkbench } = useSettings().settings;
+  const { openWorkbench, frost } = useSettings().settings;
+  const { renderer } = useGpuix();
+  useEffect(() => {
+    if (renderer && "setWindowBlurRadius" in renderer && typeof renderer.setWindowBlurRadius === "function") renderer.setWindowBlurRadius(frostRadius(frost));
+  }, [renderer, frost]);
   useEffect(() => {
     if (!target) return;
     if (hasCode(target) && !autoOpens(openWorkbench, chatting)) return;

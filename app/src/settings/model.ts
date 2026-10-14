@@ -41,6 +41,6 @@ export type SettingRowModel = {
 export type GroupModel = {
   readonly label: string | null;
   readonly foot?: string;
-  readonly preview?: "code" | "address";
+  readonly preview?: "code" | "address" | "window";
   readonly rows: readonly SettingRowModel[];
 };

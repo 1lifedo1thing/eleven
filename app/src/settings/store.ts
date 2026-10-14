@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { COMMAND_IDS } from "../keys/commands";
 import { KEYMAP_IDS, type KeymapId, type Overrides } from "../keys/keymaps";
-import { errorMessage } from "../lib/guards";
+import { errorMessage, isRecord } from "../lib/guards";
 import { readOr } from "../lib/schema";
 import { supportPath } from "../lib/support";
 import type { Appearance } from "../theme";
@@ -67,7 +67,10 @@ export type Settings = {
   readonly updateChannel: "Stable" | "Beta";
   readonly showWhatsNew: boolean;
   readonly showSuggestions: boolean;
-  readonly windowStyle: "Frosted" | "Solid";
+  /** How much of the desktop shows through the window: 0 is solid, 100 is clearest. */
+  readonly transparency: number;
+  /** How strongly the desktop behind the window is blurred, from 0 to 100. */
+  readonly frost: number;
   readonly lineSpacing: "Compact" | "Normal" | "Relaxed";
   readonly lineNumbers: boolean;
   readonly sendKey: "Return" | "Command Return";
@@ -146,7 +149,8 @@ export const DEFAULT_SETTINGS: Settings = {
   updateChannel: "Stable",
   showWhatsNew: true,
   showSuggestions: true,
-  windowStyle: "Frosted",
+  transparency: process.platform === "linux" ? 0 : 30,
+  frost: 60,
   lineSpacing: "Normal",
   lineNumbers: true,
   sendKey: "Return",
@@ -245,7 +249,8 @@ const SETTINGS: z.ZodType<Settings> = z.object({
   updateChannel: z.enum(["Stable", "Beta"]).catch(D.updateChannel),
   showWhatsNew: z.boolean().catch(D.showWhatsNew),
   showSuggestions: z.boolean().catch(D.showSuggestions),
-  windowStyle: z.enum(["Frosted", "Solid"]).catch(D.windowStyle),
+  transparency: z.number().int().min(0).max(100).catch(D.transparency),
+  frost: z.number().int().min(0).max(100).catch(D.frost),
   lineSpacing: z.enum(["Compact", "Normal", "Relaxed"]).catch(D.lineSpacing),
   lineNumbers: z.boolean().catch(D.lineNumbers),
   sendKey: z.enum(["Return", "Command Return"]).catch(D.sendKey),
@@ -302,7 +307,8 @@ const SETTINGS: z.ZodType<Settings> = z.object({
 });
 
 function parseSettings(json: unknown): Settings {
-  return readOr(SETTINGS, json, DEFAULT_SETTINGS);
+  const settings = readOr(SETTINGS, json, DEFAULT_SETTINGS);
+  return isRecord(json) && json.transparency === undefined && json.windowStyle === "Solid" ? { ...settings, transparency: 0 } : settings;
 }
 
 export function loadSettings(): Settings {

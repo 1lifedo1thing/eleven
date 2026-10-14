@@ -292,9 +292,10 @@ export function buildPages(c: Ctx): Readonly<Record<Page, readonly GroupModel[]>
       ] },
     ],
     appearance: [
-      { label: "Window", rows: [
+      { label: "Window", preview: "window", rows: [
         seg("uiSize", "Interface size", "Text and controls outside the code.", ["Small", "Default", "Large"]),
-        seg("windowStyle", "Window background", "Frosted lets your desktop show through the edges.", ["Frosted", "Solid"]),
+        { title: "Transparency", desc: "How much of your desktop shows through around the edges. All the way down is solid.", keywords: "glass see-through opacity solid window background", control: { kind: "range", min: 0, max: 100, step: 5, value: s.transparency, unit: "%", set: (transparency) => c.update({ transparency }) } },
+        { title: "Frost", desc: "How much the desktop behind the window is blurred.", keywords: "glass blur frosted window background", dim: s.transparency === 0, control: { kind: "range", min: 0, max: 100, step: 5, value: s.frost, unit: "%", set: (frost) => c.update({ frost }) } },
       ] },
       { label: "Code", preview: "code", rows: [
         sel("codeFont", "Code font", "Used for pseudocode, assembly, hex and code in replies.", ["JetBrains Mono", "SF Mono", "Menlo"]),

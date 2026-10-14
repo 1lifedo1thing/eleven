@@ -12,7 +12,7 @@ import { useTheme } from "../theme";
 import { copyText, ghidraVersion, latestRelease, newer, rizinVersion } from "./actions";
 import { buildPages, type Ctx, rowMatches } from "./catalog";
 import { GroupView, PageHeader, SettingsToast } from "./controls";
-import { AddressPreview, CodePreview, PresetCards, ThemeCards } from "./extras";
+import { AddressPreview, CodePreview, PresetCards, ThemeCards, WindowPreview } from "./extras";
 import { checkAppUpdate, useSettingsInfo } from "./info";
 import { KeyboardSection } from "./KeyboardSection";
 import type { GroupModel } from "./model";
@@ -30,6 +30,8 @@ function Preview({ group, settings }: { readonly group: GroupModel; readonly set
       return <CodePreview settings={settings} />;
     case "address":
       return <AddressPreview settings={settings} />;
+    case "window":
+      return <WindowPreview transparency={settings.transparency} frost={settings.frost} />;
     case undefined:
       return null;
     default: {

@@ -16,7 +16,6 @@ export type Appearance = "Dark" | "Light" | "System";
 
 export const DARK = {
   win: "#171717",
-  glass: "rgba(23,23,23,0.78)",
   glassTile: "rgba(255,255,255,0.07)",
   card: "#0f0f0f",
   deep: "#0b0b0b",
@@ -60,7 +59,6 @@ export type Palette = typeof DARK;
 
 export const LIGHT: Palette = {
   win: "#f3f3f1",
-  glass: "rgba(243,243,241,0.74)",
   glassTile: "rgba(0,0,0,0.05)",
   card: "#ffffff",
   deep: "#f6f6f5",
@@ -99,6 +97,20 @@ export const LIGHT: Palette = {
   ring: "rgba(0,0,0,0.08)",
   icon: "icon-light.png",
 };
+
+const clamp = (value: number): number => Math.min(100, Math.max(0, value));
+
+/** The window colour laid over the blurred desktop, from solid at transparency 0 to mostly clear at 100. */
+export function glassTint(p: Palette, transparency: number): string {
+  const [r, g, b] = [1, 3, 5].map((at) => parseInt(p.win.slice(at, at + 2), 16));
+  const alpha = 1 - (0.7 * clamp(transparency)) / 100;
+  return `rgba(${r},${g},${b},${alpha.toFixed(3)})`;
+}
+
+/** Points of blur behind the window for a frost of 0 to 100. */
+export function frostRadius(frost: number): number {
+  return Math.round(clamp(frost) / 2);
+}
 
 let systemDark: boolean | null = null;
 

@@ -1,6 +1,7 @@
+import type { LinearGradientBackground } from "@gpuix/react";
 import type { ReactElement } from "react";
 
-import { type Appearance, MONO, useTheme } from "../theme";
+import { type Appearance, frostRadius, glassTint, MONO, useTheme } from "../theme";
 import { codeFamily, formatAddress, lineHeightFor, type Syntax, syntaxFor } from "./look";
 import { PERMISSION_PRESETS, PERMISSION_TOOLS, type PermissionTable, type Settings } from "./store";
 
@@ -44,6 +45,52 @@ export function AddressPreview({ settings }: { readonly settings: Settings }): R
           <div style={{ color: p.faint }}>{settings.addressUpper ? bytes.toUpperCase() : bytes}</div>
         </div>
       ))}
+    </div>
+  );
+}
+
+const WALLPAPER: LinearGradientBackground = {
+  type: "linear-gradient",
+  angle: 135,
+  stops: [{ color: "#4b3bc4", position: 0 }, { color: "#f0874f", position: 1 }],
+  colorSpace: "oklab",
+};
+
+const GLOWS = [
+  { color: "#3fd0c9", place: { top: 18, right: 110 } },
+  { color: "#ff5fa2", place: { top: 120, left: 70 } },
+] as const;
+
+const LIGHTS = ["#ff5f57", "#febc2e", "#28c840"] as const;
+
+export function WindowPreview({ transparency, frost }: { readonly transparency: number; readonly frost: number }): ReactElement {
+  const { p } = useTheme();
+  const blur = 4 + frostRadius(frost) * 2;
+  const bar = (width: string, color: string): ReactElement => <div style={{ height: 5, width, borderRadius: 3, backgroundColor: color, pointerEvents: "none" }} />;
+  return (
+    <div aria-label="Window preview" style={{ position: "relative", height: 168, marginTop: 12, borderRadius: 12, overflow: "hidden", background: WALLPAPER }}>
+      {GLOWS.map((glow) => (
+        <div key={glow.color} style={{ position: "absolute", ...glow.place, width: 36, height: 36, borderRadius: 18, backgroundColor: glow.color, boxShadow: { offsetX: 0, offsetY: 0, blurRadius: blur, spreadRadius: blur / 3, color: glow.color }, pointerEvents: "none" }} />
+      ))}
+      <div style={{ position: "absolute", top: 22, left: 0, right: 0, bottom: -14, display: "flex", justifyContent: "center", pointerEvents: "none" }}>
+        <div style={{ display: "flex", gap: 6, width: "84%", padding: 6, borderRadius: 10, backgroundColor: glassTint(p, transparency), boxShadow: { offsetX: 0, offsetY: 10, blurRadius: 30, spreadRadius: 0, color: "rgba(0,0,0,0.3)" }, pointerEvents: "none" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 7, width: "26%", paddingTop: 4, paddingLeft: 4, pointerEvents: "none" }}>
+            <div style={{ display: "flex", gap: 5, marginBottom: 6, pointerEvents: "none" }}>
+              {LIGHTS.map((color) => <div key={color} style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color, pointerEvents: "none" }} />)}
+            </div>
+            {bar("70%", p.line3)}
+            <div style={{ display: "flex", alignItems: "center", height: 15, marginLeft: -4, paddingLeft: 4, borderRadius: 5, backgroundColor: p.sel2, pointerEvents: "none" }}>{bar("55%", p.muted)}</div>
+            {bar("80%", p.line3)}
+            {bar("60%", p.line3)}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 7, flexGrow: 1, padding: 12, borderWidth: 1, borderColor: p.sel, borderRadius: 8, backgroundColor: p.card, pointerEvents: "none" }}>
+            {bar("34%", p.keyword)}
+            {bar("62%", p.line3)}
+            {bar("48%", p.string)}
+            {bar("70%", p.line3)}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
