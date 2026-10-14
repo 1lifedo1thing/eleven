@@ -82,6 +82,9 @@ export type Settings = {
   readonly startAgentWithProject: boolean;
   readonly elevenTools: boolean;
   readonly reaTools: boolean;
+  /** The model each agent answers "Ask about code" with, by agent id; missing means the chat's model. */
+  readonly askModels: Readonly<Record<string, string>>;
+  readonly askFast: boolean;
   readonly customAgent: string;
   readonly customToolServer: string;
   readonly hidePaths: boolean;
@@ -162,6 +165,8 @@ export const DEFAULT_SETTINGS: Settings = {
   startAgentWithProject: false,
   elevenTools: true,
   reaTools: true,
+  askModels: {},
+  askFast: false,
   customAgent: "",
   customToolServer: "",
   hidePaths: true,
@@ -262,6 +267,8 @@ const SETTINGS: z.ZodType<Settings> = z.object({
   startAgentWithProject: z.boolean().catch(D.startAgentWithProject),
   elevenTools: z.boolean().catch(D.elevenTools),
   reaTools: z.boolean().catch(D.reaTools),
+  askModels: z.record(z.string(), z.string()).catch(D.askModels),
+  askFast: z.boolean().catch(D.askFast),
   customAgent: z.string().catch(D.customAgent),
   customToolServer: z.string().catch(D.customToolServer),
   hidePaths: z.boolean().catch(D.hidePaths),

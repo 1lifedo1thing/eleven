@@ -71,6 +71,8 @@ export type UiState = {
   readonly labelDraft: string;
   /** Lines picked with Select all or Shift-click, inclusive and 1-based; Copy takes them. */
   readonly lineRange: LineRange | null;
+  /** The lines whose ask thread is open under them, and the question it opened with. */
+  readonly asking: Asking | null;
   readonly finding: boolean;
   readonly findQuery: string;
   readonly findMode: FindMode;
@@ -78,7 +80,10 @@ export type UiState = {
   readonly findAt: number;
 };
 
-export type LineRange = { readonly fn: string; readonly view: "pseudo" | "asm"; readonly from: number; readonly to: number };
+/** In a "text" view (a rewrite, a source file) `fn` names the view, not a function. */
+export type LineRange = { readonly fn: string; readonly view: "pseudo" | "asm" | "text"; readonly from: number; readonly to: number };
+
+export type Asking = { readonly range: LineRange; readonly start: string | null };
 
 const EMPTY_PANE: Pane = { tabs: [], active: 0 };
 
@@ -129,7 +134,7 @@ export function initialState(panes: readonly Pane[], tree: PaneTree = rowOf(pane
     renaming: null, renameDraft: "", patching: null, patchDraft: "", pickerOpen: false,
     paletteOpen: false, paletteQuery: "",
     comments: new Map(), colors: new Map(), types: new Map(), formats: new Map(), revision: 0, selected: null, commenting: null, commentDraft: "", refsOf: null, toast: null,
-    lineRange: null, finding: false, findQuery: "", findMode: "text", findAt: 0, groups: [], blockPicks: [], labelling: null, labelDraft: "",
+    lineRange: null, asking: null, finding: false, findQuery: "", findMode: "text", findAt: 0, groups: [], blockPicks: [], labelling: null, labelDraft: "",
   };
 }
 
@@ -431,6 +436,13 @@ export type Workbench = {
   readonly orderDock: (zone: Zone, order: readonly Tool[]) => void;
 };
 
+const synced = new WeakSet<object>();
+
+/** True for a value the window took from the project as is; the autosave never writes those back over newer changes. */
+export function fromProject(value: object): boolean {
+  return synced.has(value);
+}
+
 export function useWorkbenchState(panes: readonly Pane[], docks: Docks): Workbench {
   const [s, setS] = useState<UiState>(() => initialState(panes, undefined, docks));
   const patch = (change: Partial<UiState>): void => setS((prev) => ({ ...prev, ...change }));
@@ -465,7 +477,10 @@ export function useWorkbenchState(panes: readonly Pane[], docks: Docks): Workben
       else notes.delete(addr);
       return { ...prev, notes };
     }),
-    restore: (project: Project) => setS((prev) => ({ ...prev, names: project.names, bookmarks: project.bookmarks, notes: project.notes, comments: project.comments, colors: project.colors, groups: project.groups, types: project.types, formats: project.formats })),
+    restore: (project: Project) => {
+      for (const value of [project.names, project.bookmarks, project.notes, project.comments, project.colors, project.groups]) synced.add(value);
+      setS((prev) => ({ ...prev, names: project.names, bookmarks: project.bookmarks, notes: project.notes, comments: project.comments, colors: project.colors, groups: project.groups, types: project.types, formats: project.formats }));
+    },
     showTabs: (saved: ThreadTabs) => setS((prev) => {
       let seq = prev.seq;
       const panes = saved.panes.map((pane) => ({ ...pane, tabs: pane.tabs.map((tab) => ({ ...tab, id: `t${++seq}` })) }));

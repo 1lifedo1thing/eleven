@@ -20,6 +20,8 @@ import { formatOperand, isOperandFormat, type Lookup, type Symbolic } from "../e
 import type { LineRange } from "./state";
 import { lineAddress, splitWords, type Subject, type Token, wordAddress } from "./subject";
 import { primaryHeld } from "../lib/platform";
+import { type AskRow, PinDot, useAskRows } from "./ask/AskThread";
+import { codePlace } from "./ask/place";
 
 type View = "pseudo" | "asm";
 
@@ -140,7 +142,7 @@ function lookupIn(bench: Bench): Lookup {
   };
 }
 
-function Line({ fn, view, text, number, focused, margin, found = "no", spans = null, bytes = null }: { readonly fn: string; readonly view: View; readonly text: string; readonly number: number; readonly focused: boolean; readonly margin: ReactElement | null; readonly found?: Found; readonly spans?: readonly Span[] | null; readonly bytes?: string | null }): ReactElement {
+function Line({ fn, view, text, number, focused, margin, found = "no", spans = null, bytes = null, ask = null }: { readonly fn: string; readonly view: View; readonly text: string; readonly number: number; readonly focused: boolean; readonly margin: ReactElement | null; readonly found?: Found; readonly spans?: readonly Span[] | null; readonly bytes?: string | null; readonly ask?: AskRow | null }): ReactElement {
   const { p } = useTheme();
   const bench = useBench();
   const { addrOf, nameOf, openFn, wb } = bench;
@@ -168,19 +170,19 @@ function Line({ fn, view, text, number, focused, margin, found = "no", spans = n
     }
     const anchor = sel?.kind === "line" && sel.fn === fn && sel.view === view ? sel.number : null;
     if (event?.modifiers?.shift && anchor !== null) {
-      wb.patch({ lineRange: { fn, view, from: Math.min(anchor, number), to: Math.max(anchor, number) } });
+      wb.patch({ lineRange: { fn, view, from: Math.min(anchor, number), to: Math.max(anchor, number) }, asking: null });
       return;
     }
-    wb.patch({ lineRange: null });
+    wb.patch({ lineRange: null, asking: null });
     wb.select(subject(token));
   };
   const word = (text: string): Token => ({ text, addr: addrOf(text) ?? wordAddress(text) });
   const lit = highlightedWord(wb.s.selected, fn);
   const glow = (text: string): StyleDesc => (lit !== null && text === lit ? { backgroundColor: p.sel2, borderRadius: 3 } : {});
-  return (
+  const row = (
     <div role="row" aria-label={`Line ${number}`} aria-selected={picked} style={{ display: "flex", userSelect: "text", fontFamily: look.family, fontSize: look.size, lineHeight: look.lineHeight, ...lineTint(found, picked, ranged, p) }}>
       {view === "asm" && <Breakpoint addr={here} />}
-      {gutter ? <div {...subjectMenu(bench, subject(null), (event) => pick(null, event))} style={{ display: "flex", justifyContent: "flex-end", width: 50, flexShrink: 0, paddingRight: 16, color: picked ? p.text : p.gutter, userSelect: "none" }}>{String(number)}</div> : <div {...subjectMenu(bench, subject(null), (event) => pick(null, event))} style={{ width: 16, flexShrink: 0 }} />}
+      {gutter ? <div {...subjectMenu(bench, subject(null), (event) => pick(null, event))} style={{ position: "relative", display: "flex", justifyContent: "flex-end", width: 50, flexShrink: 0, paddingRight: 16, color: picked ? p.text : p.gutter, userSelect: "none" }}>{ask?.pinned && <PinDot />}{String(number)}</div> : <div {...subjectMenu(bench, subject(null), (event) => pick(null, event))} style={{ width: 16, flexShrink: 0 }} />}
       {margin}
       {bytes !== null && <div style={{ width: 104, flexShrink: 0, color: p.faint, whiteSpace: "nowrap", overflow: "hidden" }}>{bytes}</div>}
       <div style={{ display: "flex", whiteSpace: "nowrap" }}>
@@ -207,9 +209,11 @@ function Line({ fn, view, text, number, focused, margin, found = "no", spans = n
         })}
         {comment && <div style={{ color: p.comment, whiteSpace: "nowrap" }}>{`   ; ${comment}`}</div>}
       </div>
+      {ask?.bar}
       <div {...subjectMenu(bench, subject(null), (event) => pick(null, event))} style={{ flexGrow: 1, minWidth: 24 }} />
     </div>
   );
+  return ask?.below ? <div style={{ display: "flex", flexDirection: "column" }}>{row}{ask.below}</div> : row;
 }
 
 /** Jumps and selection for one function's lines, shared by the scrolling view and the whole-file listing. */
@@ -263,7 +267,9 @@ function Lines({ fn, view, lines, focusLine }: { readonly fn: string; readonly v
   const { wb } = useBench();
   const find = useFind(lines, list);
   useCopyLines(fn, view, lines);
-  const { program } = useBench();
+  const bench = useBench();
+  const { program } = bench;
+  const askRow = useAskRows(useMemo(() => codePlace(bench, fn, view), [fn, view, bench.nameOf(fn), program.name]), lines);
   const withBytes = view === "asm" && wb.s.showBytes;
   const hex = useLoaded<readonly HexRow[]>(() => (withBytes ? program.hex(fn) : Promise.resolve([])), `${program.id}:${fn}:bytes:${withBytes}`);
   const addrs = useMemo(() => lines.map((line) => lineAddress(line)), [lines]);
@@ -279,7 +285,7 @@ function Lines({ fn, view, lines, focusLine }: { readonly fn: string; readonly v
       {wb.s.finding && <FindBar count={find.count} problem={find.problem} />}
       <virtual-list ref={list} itemCount={lines.length} windowStart={shown.start} estimatedItemHeight={lineHeight} onVisibleRange={shown.onVisibleRange} style={{ flexGrow: 1, minHeight: 0, paddingTop: 10, paddingBottom: 28, fontFamily: look.family, fontSize: look.size, lineHeight }}>
         {lines.slice(shown.start, shown.end).map((line, ix) => (
-          <Line key={shown.start + ix} fn={fn} view={view} text={line} number={shown.start + ix + 1} focused={shown.start + ix === focusLine} margin={margin(shown.start + ix)} found={found(shown.start + ix)} spans={painted?.[shown.start + ix] ?? null} bytes={bytesOf(shown.start + ix)} />
+          <Line key={shown.start + ix} fn={fn} view={view} text={line} number={shown.start + ix + 1} focused={shown.start + ix === focusLine} margin={margin(shown.start + ix)} found={found(shown.start + ix)} spans={painted?.[shown.start + ix] ?? null} bytes={bytesOf(shown.start + ix)} ask={askRow(shown.start + ix + 1)} />
         ))}
       </virtual-list>
     </>

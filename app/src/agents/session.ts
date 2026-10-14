@@ -17,6 +17,7 @@ import { isRemembered, rememberAnswer } from "./remembered";
 import { isReadOnly, onlySuggests, permissionTool, REA_SERVER, reaToolName } from "./permissions";
 import { type AgentEntry, shortName } from "./registry";
 import { configOptions, legacyModes, mergeOptions, translate } from "./translate";
+import { rememberModels } from "./models";
 
 type Emit = (event: AgentEvent) => void;
 type Answer = (choiceId: string | null) => void;
@@ -167,6 +168,8 @@ export class AgentSession {
     private readonly chat: string,
     private readonly project: string | null = null,
     private readonly file: string | null = null,
+    /** Off for a quick answer that already has its context, so no tool servers have to start first. */
+    private readonly tools: boolean = true,
   ) {
     this.ready = this.start();
     this.ready.catch(async (err: unknown) => {
@@ -188,13 +191,14 @@ export class AgentSession {
 
   private publish(options: readonly SessionOption[]): void {
     this.options = options;
+    rememberModels(this.agent.id, options);
     this.emit({ kind: "options", options });
   }
 
   private async start(): Promise<void> {
     this.connection = this.connect(await resolveLaunch(this.agent, this.native));
     const init = await this.connection.initialize({ protocolVersion: acp.PROTOCOL_VERSION, clientCapabilities: {} });
-    const session = await this.connection.newSession({ cwd: this.cwd, mcpServers: toolServers(shortName(this.agent.name), this.chat) });
+    const session = await this.connection.newSession({ cwd: this.cwd, mcpServers: this.tools ? toolServers(shortName(this.agent.name), this.chat) : [] });
     this.sessionId = session.sessionId;
     this.emit({ kind: "connected", agent: shortName(init.agentInfo?.title ?? init.agentInfo?.name ?? this.agent.name) });
     this.publish(mergeOptions(configOptions(session.configOptions), legacyModes(session.modes)));

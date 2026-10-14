@@ -35,12 +35,13 @@ import { type Bench, BenchContext, useBench } from "./parts";
 import { MIN_PANE, PaneDivider, ResizeOverlay } from "./Resize";
 import { loadProgram } from "./program";
 import { across, type PaneTree, type TreePath } from "./paneTree";
-import { initialPanes, useWorkbenchState, type Workbench as WorkbenchState } from "./state";
+import { fromProject, initialPanes, useWorkbenchState, type Workbench as WorkbenchState } from "./state";
 import { StatusBar } from "./StatusBar";
 import { currentSettings } from "../settings/store";
 import { DEFAULT_SIZES, onLayoutReset } from "./sizes";
 import { loadThreadTabs, saveThreadTabs } from "./threadTabs";
 import { SliceOverlay } from "../welcome/SliceDialog";
+import { openAsk } from "./ask/place";
 
 /** The window's own margins around the editor card. */
 const EDGES = 24;
@@ -117,7 +118,9 @@ function useWorkbenchCommands(wb: WorkbenchState, tab: Tab | undefined): void {
   useCommand("strings", () => wb.open({ kind: "list", list: "strings" }, false));
   useCommand("split", () => wb.split(wb.s.focus));
   useCommand("splitDown", () => wb.split(wb.s.focus, "bottom"));
-  useCommand("agent", () => wb.toggleTool("agent"));
+  useCommand("agent", () => {
+    if (!openAsk(wb, null)) wb.toggleTool("agent");
+  });
   useCommand("terminal", () => wb.toggleTool("terminal"));
 }
 
@@ -192,7 +195,8 @@ function useBenchValue(program: Program, onBack: () => void, openTarget: (target
       loading.current = false;
       return;
     }
-    if (program.functions.length > 0) updateProject(program.id, (project) => ({ ...project, names: s.names, bookmarks: s.bookmarks, notes: s.notes, comments: s.comments, colors: s.colors, groups: s.groups }), YOU);
+    const mine = <T extends object>(local: T, saved: T): T => (fromProject(local) ? saved : local);
+    if (program.functions.length > 0) updateProject(program.id, (project) => ({ ...project, names: mine(s.names, project.names), bookmarks: mine(s.bookmarks, project.bookmarks), notes: mine(s.notes, project.notes), comments: mine(s.comments, project.comments), colors: mine(s.colors, project.colors), groups: mine(s.groups, project.groups) }), YOU);
   }, [s.names, s.bookmarks, s.notes, s.comments, s.colors, s.groups]);
   useThreadTabs(wb, chat.thread.id, chat.thread.state.messages.length > 0, program);
   useEffect(() => onLayoutReset(() => wb.patch({ sizes: DEFAULT_SIZES })), []);

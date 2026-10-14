@@ -5,6 +5,7 @@ import { join } from "node:path";
 import type { Presence } from "../agents/detect";
 import { DEFAULT_AGENT_ID } from "../agents/registry";
 import { canSignOut, signedIn, signIn, signOut } from "../welcome/agentSetup";
+import { knownModels } from "../agents/models";
 import { forgetAnswers } from "../agents/remembered";
 import { activeEngine, chooseEngine, type EngineId } from "../analysis/engines";
 import type { Agents } from "../chat/useAgents";
@@ -185,6 +186,20 @@ function agentRows(c: Ctx): { readonly here: readonly SettingRowModel[]; readonl
   return { here, more };
 }
 
+/** The model the chosen agent answers "Ask about code" with; the list is what it offered the last time it started. */
+function askModelRow(c: Ctx): SettingRowModel {
+  const agent = c.agents.selected;
+  const models = knownModels(agent.id);
+  const others = Object.fromEntries(Object.entries(c.settings.askModels).filter(([id]) => id !== agent.id));
+  const pick = (value: string): void => c.update({ askModels: value ? { ...others, [agent.id]: value } : others });
+  const options: readonly Option[] = [
+    { value: "", label: "Same as the chat" },
+    ...models.map((model): Option => (model.description ? { value: model.value, label: model.name, note: model.description } : { value: model.value, label: model.name })),
+  ];
+  const desc = models.length > 0 ? `For ${agent.name}. A smaller model answers sooner but explains less.` : `${agent.name}’s models show here once it has started.`;
+  return { title: "Model", desc, keywords: "ask explain quick answer selection", control: { kind: "select", value: c.settings.askModels[agent.id] ?? "", pick, options } };
+}
+
 function input(c: Ctx, key: "customAgent" | "customToolServer", title: string, desc: string, placeholder: string, done: string): SettingRowModel {
   const draft = c.drafts[key] ?? c.settings[key];
   return {
@@ -337,6 +352,10 @@ export function buildPages(c: Ctx): Readonly<Record<Page, readonly GroupModel[]>
         tg("reaTools", "Analysis tools (REA)", "Read functions, strings, cross-references and bytes from the open app.", { lead: { kind: "img", src: join(ENGINES_DIR, "rea.svg") }, keywords: "mcp tool server" }),
         tg("idaTools", "IDA Pro", "Uses your IDA license through its MCP plugin.", { lead: { kind: "img", src: ENGINE_LOGO.ida }, keywords: "mcp tool server" }),
         input(c, "customToolServer", "Add a tool server", "Any MCP server. Every agent gets its tools.", "npx my-mcp-server", "Added the tool server"),
+      ] },
+      { label: "Ask about code", foot: "Select lines in any code view, then Ask or Explain. These only change those quick answers, not the chat.", rows: [
+        askModelRow(c),
+        tg("askFast", "Fast mode", "Quicker answers from agents that offer it, like Claude. It can cost more.", { keywords: "ask explain quick answer speed" }),
       ] },
       { label: "Running agents", rows: [
         tg("keepAgentsRunning", "Keep agents running between chats", "Replies start faster. Uses a little more memory."),
