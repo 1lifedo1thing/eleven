@@ -337,7 +337,7 @@ function PermissionCard({ message, agentName, onAnswer }: {
   if (offer) return <SuggestionPrompt message={message} offer={offer} onAnswer={onAnswer} />;
   const { label, detail } = toolLabel(message.tool, message.input);
   const question = message.tool.trim().endsWith("?");
-  const input = question ? "" : preview(message.input);
+  const input = question ? "" : preview(message.input).replace(/\s*\n\s*/g, " ");
   const firstAllow = question ? -1 : message.choices.findIndex((choice) => choice.allows);
   const title = question ? message.tool.trim() : `${agentName} wants to ${label.charAt(0).toLowerCase()}${label.slice(1)}${detail ? ` ${detail}` : ""}`;
   return (
@@ -347,17 +347,22 @@ function PermissionCard({ message, agentName, onAnswer }: {
         <div style={{ fontWeight: 500, color: p.text }}>{title}</div>
       </Row>
       <div style={{ fontSize: 12, color: p.text4 }}>{question ? `${agentName} needs your answer to keep going.` : "It can change things or run code, so it asks first."}</div>
-      {input && <div style={{ maxHeight: 160, overflowY: "scroll", padding: 9, borderRadius: 8, backgroundColor: p.deep, fontFamily: MONO, fontSize: 11.5, lineHeight: 17, color: p.text4 }}>{input}</div>}
+      {input && (
+        <div style={{ display: "flex", padding: 9, borderRadius: 8, backgroundColor: p.deep, fontFamily: MONO, fontSize: 11.5, lineHeight: 17, color: p.text4, overflowX: "scroll" }}>
+          <div style={{ whiteSpace: "nowrap" }}>{input}</div>
+        </div>
+      )}
       {message.state.kind === "answered" ? (
         <Row gap={6} style={{ fontSize: 12, color: p.muted }}>
           <Icon name="check" size={12} color={p.muted} />
           <div>{message.state.label}</div>
         </Row>
       ) : (
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
-          {message.choices.map((choice, ix) => <ChoiceButton key={choice.id} choice={choice} primary={ix === firstAllow} onChoose={() => onAnswer(choice)} />)}
-          <Spacer />
-          <div onClick={() => onAnswer(null)} style={{ fontSize: 12, color: p.muted, cursor: "pointer", hover: { opacity: 0.72 } }}>Skip</div>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, flexGrow: 1, minWidth: 0 }}>
+            {message.choices.map((choice, ix) => <ChoiceButton key={choice.id} choice={choice} primary={ix === firstAllow} onChoose={() => onAnswer(choice)} />)}
+          </div>
+          <div onClick={() => onAnswer(null)} style={{ display: "flex", alignItems: "center", height: 28, flexShrink: 0, fontSize: 12, color: p.muted, cursor: "pointer", hover: { opacity: 0.72 } }}>Skip</div>
         </div>
       )}
     </div>
