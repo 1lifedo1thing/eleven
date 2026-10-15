@@ -5,6 +5,7 @@ import { useEffect, useReducer, useRef, useState } from "react";
 import type { NativeCommand } from "../agents/detect";
 import type { AgentEvent, PermissionChoice, SessionOption } from "../agents/events";
 import type { AgentEntry } from "../agents/registry";
+import { rememberPick, savedPicks } from "../agents/picks";
 import { AgentSession } from "../agents/session";
 import { hidePaths } from "../bridge/privacy";
 import { currentSettings, type Settings } from "../settings/store";
@@ -187,6 +188,7 @@ export function useThread(agent: AgentEntry, native: NativeCommand | null, targe
     if (session.current) return session.current;
     const cwd = target ? dirname(target.path) : process.env.HOME ?? "/";
     session.current = new AgentSession(agent, native, cwd, onEvent, id, projectOf(target), target?.path ?? null);
+    session.current.restore(savedPicks(agent.id));
     dispatch({ type: "starting" });
     return session.current;
   };
@@ -297,7 +299,10 @@ export function useThread(agent: AgentEntry, native: NativeCommand | null, targe
       if (text) send(text);
     },
     answer,
-    setOption: (option, value) => void ensureSession().setOption(option, value),
+    setOption: (option, value) => {
+      rememberPick(agent.id, option.id, value);
+      void ensureSession().setOption(option, value);
+    },
     reset: () => {
       stopSession();
       requested.current.clear();

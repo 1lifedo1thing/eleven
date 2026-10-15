@@ -18,6 +18,7 @@ import { isReadOnly, onlySuggests, permissionTool, REA_SERVER, reaToolName } fro
 import { type AgentEntry, shortName } from "./registry";
 import { configOptions, legacyModes, mergeOptions, translate } from "./translate";
 import { rememberModels } from "./models";
+import type { Picks } from "./picks";
 import { FROM_SOURCE } from "../lib/platform";
 import { start, stop } from "../lib/process";
 
@@ -160,6 +161,8 @@ export class AgentSession {
   /** Set once Eleven stops this session on purpose; nothing it says afterwards reaches the thread. */
   private stopped = false;
   private options: readonly SessionOption[] = [];
+  /** Your saved picks being applied; the first prompt waits so it runs on the model you chose. */
+  private restoring: Promise<void> = Promise.resolve();
 
   constructor(
     private readonly agent: AgentEntry,
@@ -252,8 +255,25 @@ export class AgentSession {
     return { connection: this.connection, sessionId: this.sessionId };
   }
 
+  private categoryOf(id: string): string {
+    return this.options.find((o) => o.id === id)?.category ?? "";
+  }
+
+  /** Switches to the options you picked last time, skipping any this agent no longer offers. */
+  restore(picks: Picks): void {
+    this.restoring = (async (): Promise<void> => {
+      await this.session();
+      const modelFirst = Object.entries(picks).sort(([a], [b]) => Number(this.categoryOf(b) === "model") - Number(this.categoryOf(a) === "model"));
+      for (const [id, value] of modelFirst) {
+        const option = this.options.find((o) => o.id === id);
+        if (option && option.current !== value && option.choices.some((choice) => choice.value === value)) await this.setOption(option, value);
+      }
+    })().catch(() => undefined);
+  }
+
   async prompt(text: string): Promise<void> {
     try {
+      await this.restoring;
       const { connection, sessionId } = await this.session();
       const result = await connection.prompt({ sessionId, prompt: [{ type: "text", text }] });
       this.emit({ kind: "turnEnded", cancelled: result.stopReason === "cancelled" });
