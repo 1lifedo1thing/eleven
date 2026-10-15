@@ -11,7 +11,7 @@ import type { TableRow } from "../workbench/model";
 const SPLIT = /^(?:config|split_config|split)[._-].+\.apk$|\.config\.[^/]+\.apk$/i;
 const NATIVE = /^lib\/[^/]+\/[^/]+\.so$/;
 
-function entries(zip: string): readonly string[] {
+export function entries(zip: string): readonly string[] {
   try {
     const [lister, args] = zipListing(zip);
     return runSync(lister, args, { maxBuffer: 64 << 20 }).split(/\r?\n/).filter(Boolean);
@@ -182,11 +182,17 @@ export type ResourceKind = "text" | "image" | "native" | "hermes" | "binary";
 const IMAGE = /\.(?:png|jpe?g|gif|webp|bmp)$/i;
 const HERMES_MAGIC = Buffer.from([0xc6, 0x1f, 0xbc, 0x03, 0xc1, 0x03, 0x19, 0x1f]);
 const ELF_MAGIC = Buffer.from([0x7f, 0x45, 0x4c, 0x46]);
+const MACHO_MAGIC = new Set([0xfeedface, 0xfeedfacf, 0xcefaedfe, 0xcffaedfe, 0xcafebabe, 0xcafebabf]);
+
+/** Java class files share the universal-binary magic, so they're told apart by name. */
+function isMachO(file: string, head: Buffer): boolean {
+  return head.length >= 4 && MACHO_MAGIC.has(head.readUInt32BE(0)) && !file.endsWith(".class");
+}
 
 /** What a file in the app is, from its name and first bytes. */
 export function resourceKind(file: string, head: Buffer): ResourceKind {
   if (IMAGE.test(file)) return "image";
-  if (head.subarray(0, 4).equals(ELF_MAGIC)) return "native";
+  if (head.subarray(0, 4).equals(ELF_MAGIC) || isMachO(file, head)) return "native";
   if (head.subarray(0, 8).equals(HERMES_MAGIC)) return "hermes";
   return head.includes(0) ? "binary" : "text";
 }

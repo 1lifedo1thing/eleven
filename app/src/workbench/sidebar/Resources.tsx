@@ -20,7 +20,7 @@ function closedFolders(paths: readonly string[], isOpen: (key: string, byDefault
   return new Set(nodes.filter((node) => node.folder && !isOpen(`res:${node.path}`, siblings.get(parentOf(node.path)) === 1)).map((node) => node.path));
 }
 
-/** The app's manifest, res, assets and native libraries, each opening in a resource tab. Only apps unpacked by jadx have them. */
+/** The app's files (manifest, plists, res, assets, native libraries and frameworks), each opening in a resource tab. Lone binaries have none. */
 export function Resources(): ReactElement | null {
   const { program, wb } = useBench();
   const folders = useFolders();

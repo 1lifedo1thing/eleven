@@ -1,7 +1,9 @@
 
 import { forgetCode, rea, type Opened } from "../engine/rea";
 import { type CodeType, isCodeType } from "../engine/codeTypes";
-import type { Target } from "../engine/target";
+import { bundleOf, type Target } from "../engine/target";
+import { type ApkFiles } from "../engine/apk";
+import { bundleFiles } from "../engine/apple";
 import { loadDossier } from "../engine/dossier";
 import { loadProject, projectId } from "../engine/project";
 import { codeUsingString, hexRows, programSegments, programStrings } from "./layout";
@@ -32,6 +34,11 @@ async function timed<T>(log: string[], op: string, work: () => Promise<T>): Prom
   return value;
 }
 
+async function appFiles(target: Target): Promise<ApkFiles | undefined> {
+  const app = bundleOf(target);
+  return app ? bundleFiles(app) : undefined;
+}
+
 function importRow(procedure: Procedure): TableRow {
   const [library = "", symbol = procedure.name] = procedure.name.split("::");
   const file = library.split("/").at(-1) ?? library;
@@ -43,10 +50,11 @@ async function loadProgramRizin(target: Target): Promise<Program> {
   const log: string[] = [];
   const sha256 = projectId(target);
   rizinReplayOn(target.path, savedTypes(sha256));
-  const [functions, strings, segments] = await Promise.all([
+  const [functions, strings, segments, resources] = await Promise.all([
     timed(log, "functions (rizin)", () => rizinFunctions(target.path)),
     timed(log, "strings (rizin)", () => rizinStrings(target.path)),
     timed(log, "segments (rizin)", () => rizinSegments(target.path)),
+    timed(log, "app files", () => appFiles(target)),
   ]);
   const hasDecompiler = await rizinHasDecompiler(target.path).catch(() => false);
   const code = async (addr: string, view: "pseudo" | "asm"): Promise<string> => {
@@ -68,6 +76,7 @@ async function loadProgramRizin(target: Target): Promise<Program> {
     segments,
     evidence: `${sha256.slice(0, 8)}… · Rizin`,
     engine: "Rizin",
+    ...(resources ? { resources } : {}),
     log: () => log,
     code,
     refs: (addr) => timed(log, `xrefs ${addr}`, () => rizinRefs(target.path, addr)),
@@ -119,9 +128,10 @@ async function loadProgramRea(target: Target): Promise<Program> {
   const functions: readonly Fn[] = procedures
     .filter((p) => p.kind !== "External")
     .map((p) => ({ addr: p.address, name: p.name, kind: p.kind === "Thunk" ? "thunk" : "function" }));
-  const [strings, segments] = await Promise.all([
+  const [strings, segments, resources] = await Promise.all([
     timed(log, "list_strings", () => programStrings(target.path, sha256)),
     timed(log, "list_segments", () => programSegments(target.path, sha256)),
+    timed(log, "app files", () => appFiles(target)),
   ]);
   const code = (addr: string, view: "pseudo" | "asm"): Promise<string> => {
     const name = functions.find((fn) => fn.addr === addr)?.name ?? addr;
@@ -141,6 +151,7 @@ async function loadProgramRea(target: Target): Promise<Program> {
     segments,
     evidence: `${sha256.slice(0, 8)}…`,
     engine: "Ghidra",
+    ...(resources ? { resources } : {}),
     log: () => log,
     code,
     refs: async (addr) => {

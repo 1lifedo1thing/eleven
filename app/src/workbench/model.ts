@@ -89,7 +89,7 @@ export type Program = {
   readonly source?: (file: string) => Promise<SourceText>;
   /** Source files with no functions of their own, so the file tree still lists them. */
   readonly bareFiles?: readonly string[];
-  /** The app's other files (manifest, resources, assets, native libraries), for engines that unpack an app (jadx). */
+  /** The app's other files (manifest, resources, assets, native libraries), for apps: jadx unpacks Android ones, iOS and macOS bundles are read in place. */
   readonly resources?: ApkFiles;
   /** The functions that use the string at an address, for engines that can follow references to data. */
   readonly codeUsing?: (addr: string) => Promise<readonly string[]>;

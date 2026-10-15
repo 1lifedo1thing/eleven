@@ -3,6 +3,7 @@ import { open, readFile, stat } from "node:fs/promises";
 import type { ReactElement } from "react";
 
 import { type ApkFiles, hexDump, type ResourceKind, resourceKind, sizeText } from "../engine/apk";
+import { plistXml } from "../engine/apple";
 import { Button, ErrorCard } from "../components/kit";
 import { useLoaded } from "../lib/useLoaded";
 import { useTheme } from "../theme";
@@ -25,6 +26,10 @@ async function readResource(files: ApkFiles, file: string): Promise<Read> {
     await handle.read(head, 0, head.length, 0);
   } finally {
     await handle.close();
+  }
+  if (head.subarray(0, 8).toString("latin1") === "bplist00") {
+    const xml = await plistXml(path);
+    if (xml !== null) return { path, size, kind: "text", text: xml };
   }
   const kind = resourceKind(file, head);
   if (kind === "text" && size <= TEXT_LIMIT) return { path, size, kind, text: await readFile(path, "utf8") };
@@ -97,7 +102,7 @@ function Loaded({ file, read }: { readonly file: string; readonly read: Read }):
   }
 }
 
-/** One file from inside an Android app: text as code, images as images, native libraries ready to open. */
+/** One file from inside an app: text as code, images as images, native libraries ready to open. */
 export function ResourceView({ file }: { readonly file: string }): ReactElement {
   const { p } = useTheme();
   const { program } = useBench();

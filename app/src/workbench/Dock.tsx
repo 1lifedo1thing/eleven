@@ -1,5 +1,6 @@
 import { type ReactElement, useState } from "react";
 
+import type { ThreadSummary } from "../chat/history";
 import type { ChatTab } from "../chat/useChat";
 import { useTheme } from "../theme";
 import { AgentLogo, Dot, Icon, MenuSurface, Popover, usePopover } from "../components/ui";
@@ -30,6 +31,33 @@ function ChatTabView({ tab, onPick, onClose }: { readonly tab: ChatTab; readonly
   );
 }
 
+/** A past chat: click to open it. Hovering shows Delete, which asks once more before it removes the chat. */
+export function PastChat({ summary, when, onOpen, onDelete }: { readonly summary: ThreadSummary; readonly when: string; readonly onOpen: () => void; readonly onDelete: () => void }): ReactElement {
+  const { p } = useTheme();
+  const [hovered, setHovered] = useState(false);
+  const [armed, setArmed] = useState(false);
+  const leave = (): void => {
+    setHovered(false);
+    setArmed(false);
+  };
+  const press = (): void => {
+    if (!armed) return setArmed(true);
+    setArmed(false);
+    onDelete();
+  };
+  return (
+    <div onMouseEnter={() => setHovered(true)} onMouseLeave={leave} style={{ display: "flex", alignItems: "center", gap: 6, height: 34, flexShrink: 0, paddingRight: 4, borderRadius: 7, ...(hovered ? { backgroundColor: p.fill } : {}) }}>
+      <div onClick={onOpen} role="button" aria-label={summary.title} style={{ display: "flex", alignItems: "center", gap: 10, flexGrow: 1, minWidth: 0, height: 34, paddingLeft: 8, cursor: "pointer", hover: HOVER }}>
+        <div style={{ flexGrow: 1, minWidth: 0, color: p.text3, ...ELLIPSIS }}>{summary.title}</div>
+        {!hovered && <div style={{ flexShrink: 0, paddingRight: 4, fontSize: 11.5, color: p.faint }}>{when}</div>}
+      </div>
+      {hovered && (armed
+        ? <div onClick={press} role="button" aria-label={`Delete ${summary.title}`} style={{ flexShrink: 0, paddingLeft: 6, paddingRight: 6, fontSize: 12, color: p.error, cursor: "pointer", hover: HOVER }}>Delete?</div>
+        : <IconButton icon="trash" label="Delete chat" iconSize={13} color={p.faint} onClick={press} />)}
+    </div>
+  );
+}
+
 function PastChats({ onDone }: { readonly onDone: () => void }): ReactElement {
   const { p } = useTheme();
   const { chat, program } = useBench();
@@ -44,12 +72,7 @@ function PastChats({ onDone }: { readonly onDone: () => void }): ReactElement {
         <input {...TYPING} autoFocus value={query} placeholder={`Search chats in ${program.name}`} onChange={(e) => setQuery(e.value ?? "")} style={{ flexGrow: 1, fontSize: 12.5, color: p.text, backgroundColor: p.fill }} />
       </div>
       <div style={{ display: "flex", flexDirection: "column", overflowY: "scroll", minHeight: 0 }}>
-        {shown.map((summary) => (
-          <div key={summary.id} onClick={() => { onDone(); chat.openThread(summary.id); }} role="button" style={{ display: "flex", alignItems: "center", gap: 10, height: 34, flexShrink: 0, paddingLeft: 8, paddingRight: 8, borderRadius: 7, cursor: "pointer", hover: HOVER }}>
-            <div style={{ flexGrow: 1, minWidth: 0, color: p.text3, ...ELLIPSIS }}>{summary.title}</div>
-            <div style={{ flexShrink: 0, fontSize: 11.5, color: p.faint }}>{ago(summary.updatedAt, now)}</div>
-          </div>
-        ))}
+        {shown.map((summary) => <PastChat key={summary.id} summary={summary} when={ago(summary.updatedAt, now)} onOpen={() => { onDone(); chat.openThread(summary.id); }} onDelete={() => chat.deleteChats([summary.id])} />)}
         {shown.length === 0 && <div style={{ paddingTop: 12, paddingBottom: 12, paddingLeft: 8, fontSize: 12.5, color: p.muted }}>{words ? "No chats match that." : "No other chats on this file yet."}</div>}
       </div>
     </MenuSurface>
