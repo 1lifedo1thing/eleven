@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 import { reaLaunch } from "../engine/rea";
-import { enginesDir, ghidraVersion, jdkVersion } from "../engine/toolchain";
+import { enginesDir, findGhidra, ghidraVersion, jdkVersion } from "../engine/toolchain";
 import { ANALYZE_HEADLESS, cacheRoot, exe, jdkLocations, THIS_DEVICE } from "../lib/platform";
 import { run } from "../lib/process";
 import { newestFirst, versionIn } from "../lib/version";
@@ -15,8 +15,6 @@ const MIN_JAVA = 21;
 export type CheckStatus = "checking" | "ok" | "info" | "problem";
 
 export type Check = { readonly key: string; readonly status: CheckStatus; readonly title: string; readonly detail: string };
-
-const GHIDRA_PARENTS = [enginesDir(), join(HOME, ".local", "share"), join(HOME, "Applications"), HOME, "/Applications", "/opt", "/opt/homebrew/Caskroom/ghidra", "/usr/local/Caskroom/ghidra"] as const;
 
 const JDK_HOMES = jdkLocations(enginesDir());
 
@@ -42,8 +40,7 @@ function tildify(path: string): string {
 export function ghidraHome(): string | null {
   const fromEnv = process.env.GHIDRA_INSTALL_DIR;
   if (fromEnv && existsSync(join(fromEnv, "support", ANALYZE_HEADLESS))) return fromEnv;
-  const homes = GHIDRA_PARENTS.flatMap((parent) => children(parent).flatMap((dir) => [dir, ...children(dir)]));
-  return homes.filter((dir) => /ghidra_[\d.]+_PUBLIC$/i.test(dir) && existsSync(join(dir, "support", ANALYZE_HEADLESS))).sort(newestFirst(ghidraVersion))[0] ?? null;
+  return findGhidra();
 }
 
 function ghidraCheck(): Check {

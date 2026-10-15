@@ -55,11 +55,13 @@ export function jdkVersion(home: string): string | null {
   return readMatch(join(home, "release"), /JAVA_VERSION="([^"]+)"/);
 }
 
+/** The home folder is searched one level deep only: listing Documents or Desktop makes macOS ask for access. */
 function ghidraHomes(parent: string): readonly string[] {
-  return children(parent).flatMap((dir) => [dir, ...children(dir)]).filter((dir) => /ghidra_[\d.]+_PUBLIC$/i.test(dir) && existsSync(join(dir, "support", ANALYZE_HEADLESS)));
+  const dirs = parent === HOME ? children(parent) : children(parent).flatMap((dir) => [dir, ...children(dir)]);
+  return dirs.filter((dir) => /ghidra_[\d.]+_PUBLIC$/i.test(dir) && existsSync(join(dir, "support", ANALYZE_HEADLESS)));
 }
 
-function findGhidra(): string | null {
+export function findGhidra(): string | null {
   return GHIDRA_PARENTS.flatMap(ghidraHomes).sort(newestFirst(ghidraVersion))[0] ?? null;
 }
 
