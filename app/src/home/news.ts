@@ -26,6 +26,13 @@ export type News = {
 /** Newest first; the card opens on the first one. */
 export const NEWS: readonly News[] = [
   {
+    id: "notifications",
+    title: "Hear back while you're away",
+    body: "Switch to another app and Eleven tells you when your agent finishes or needs your OK, and you can answer right from the notification. Your chats are back in the side panel too.",
+    art: { kind: "logos", files: ["icons/thread.svg", "icons/new-chat.svg"] },
+    action: { kind: "settings", label: "Choose what you hear about", page: "chat" },
+  },
+  {
     id: "ask-about-lines",
     title: "Ask about any line",
     body: "Click line numbers in any code view, then Ask or Explain. The answer opens right under the lines, and a suggested rename is one click away.",
