@@ -1,11 +1,13 @@
+import { toolLabel } from "../agents/describe";
 import type { PermissionChoice } from "../agents/events";
+import { isRecord } from "../lib/guards";
 
 export type ChatRef = { readonly id: string; readonly title: string; readonly project: string | null };
 
 /** Something worth telling you about while you're in another app. */
 export type Moment =
   | { readonly kind: "agentDone"; readonly chat: ChatRef; readonly agent: string; readonly answer: string }
-  | { readonly kind: "agentNeedsYou"; readonly chat: ChatRef; readonly agent: string; readonly ask: number; readonly tool: string; readonly choices: readonly PermissionChoice[] }
+  | { readonly kind: "agentNeedsYou"; readonly chat: ChatRef; readonly agent: string; readonly ask: number; readonly tool: string; readonly input: unknown; readonly choices: readonly PermissionChoice[] }
   | { readonly kind: "agentStopped"; readonly chat: ChatRef; readonly agent: string; readonly reason: string }
   | { readonly kind: "opened"; readonly project: string; readonly name: string; readonly engine: string; readonly functions: number }
   | { readonly kind: "openFailed"; readonly name: string; readonly advice: string };
@@ -27,6 +29,14 @@ function firstLine(text: string): string {
   const cut = line.slice(0, BODY_LIMIT);
   const stop = cut.lastIndexOf(". ");
   return stop > BODY_LIMIT / 2 ? cut.slice(0, stop + 1) : `${cut.trimEnd()}…`;
+}
+
+/** A short name for what the agent wants to do. A raw shell command is never readable in a notification. */
+function askedFor(tool: string, input: unknown): string {
+  const { label } = toolLabel(tool, input);
+  if (label.length <= 60 && !/[;|&$]/.test(label)) return label;
+  if (isRecord(input) && "command" in input) return "Run a command";
+  return /[;|&$]/.test(label) ? "Run a command" : `${label.slice(0, 59).trimEnd()}…`;
 }
 
 function chatTitle(chat: ChatRef, agent: string): string {
@@ -59,7 +69,7 @@ export function noteFor(moment: Moment): Note {
       return {
         tag: askTag(moment.chat.id, moment.ask),
         title: `${moment.agent} needs your OK`,
-        body: `${moment.tool}${where}`,
+        body: `${askedFor(moment.tool, moment.input)}${where}`,
         actions: askButtons(moment.choices).map((choice) => ({ id: choice.id, label: choice.label })),
       };
     }

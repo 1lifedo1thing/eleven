@@ -76,7 +76,7 @@ export function useChatMoments(state: ThreadState, info: ChatInfo): { readonly h
           const index = askIndex(state.messages, event.id);
           const buttons = Object.fromEntries(askButtons(event.choices).map((choice) => [choice.id, () => answer(index, event.id, choice)]));
           asking.current.add(askTag(id, event.id));
-          void tell({ kind: "agentNeedsYou", chat, agent, ask: event.id, tool: event.tool, choices: event.choices }, { ...open, buttons });
+          void tell({ kind: "agentNeedsYou", chat, agent, ask: event.id, tool: event.tool, input: event.input, choices: event.choices }, { ...open, buttons });
           break;
         }
         default:

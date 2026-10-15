@@ -29,11 +29,20 @@ test("notify: a permission request offers one way to allow and one way to refuse
     { id: "no", label: "Reject", allows: false },
   ];
   expect(askButtons(choices).map((choice) => choice.id)).toEqual(["always", "no"]);
-  const note = noteFor({ kind: "agentNeedsYou", chat, agent: "Claude Code", ask: 3, tool: "Run xcrun lldb", choices });
+  const note = noteFor({ kind: "agentNeedsYou", chat, agent: "Claude Code", ask: 3, tool: "Run xcrun lldb", input: {}, choices });
   expect(note.tag).toBe("ask:c1:3");
   expect(note.title).toBe("Claude Code needs your OK");
   expect(note.body).toBe("Run xcrun lldb in Signal");
   expect(note.actions).toEqual([{ id: "always", label: "Always allow" }, { id: "no", label: "Reject" }]);
+});
+
+test("notify: a shell command reads as its description, never the raw command", () => {
+  const tool = "cd /Users/chizi/Library/Caches/eleven/ipa/8e49/Payload/Game.app; f=Data/Managed/Metadata/global-metadata.dat; for x in *; do echo $x; done";
+  const asked = { kind: "agentNeedsYou", chat, agent: "Claude Code", ask: 4, choices: [] } as const;
+  expect(noteFor({ ...asked, tool, input: { command: tool, description: "Check the IL2CPP metadata file" } }).body).toBe("Check the IL2CPP metadata file in Signal");
+  expect(noteFor({ ...asked, tool, input: { command: tool } }).body).toBe("Run a command in Signal");
+  expect(noteFor({ ...asked, tool, input: { command: ["bash", "-lc", tool] } }).body).toBe("Run a command in Signal");
+  expect(noteFor({ ...asked, tool, input: undefined }).body).toBe("Run a command in Signal");
 });
 
 test("notify: a slow open says which engine finished and how much it found", () => {
