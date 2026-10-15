@@ -1,13 +1,43 @@
 import { type ReactElement, useState } from "react";
 
+import { threadMenu } from "../../chat/threadMenu";
+import { ThreadName } from "../../chat/ThreadName";
 import { loadProject } from "../../engine/project";
 import { goTo } from "../actions";
 import { GpuSection } from "../GpuTabs";
 import type { ListKind } from "../model";
 import { useBench } from "../parts";
-import { SideRow, SideSection } from "./parts";
+import { useTheme } from "../../theme";
+import { Faint, SideRow, SideSection } from "./parts";
 
 const NEST = 18;
+const RECENT_CHATS = 5;
+
+/** This project's chats, newest first; the running one has a lit dot. */
+export function Chats(): ReactElement {
+  const { p } = useTheme();
+  const { wb, chat } = useBench();
+  const [all, setAll] = useState(false);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const current = chat.thread.id;
+  const newest = [...chat.saved].sort((a, b) => b.updatedAt - a.updatedAt);
+  const shown = all ? newest : newest.slice(0, RECENT_CHATS);
+  const hidden = newest.length - shown.length;
+  const show = (id: string): void => {
+    chat.openThread(id);
+    wb.reveal("agent");
+  };
+  return (
+    <SideSection id="threads" title="Chats" count={newest.length > 0 ? `${newest.length}` : ""}>
+      {newest.length === 0 && <Faint text="Ask the agent something to start a chat." />}
+      {shown.map((thread) => (thread.id === renaming
+        ? <ThreadName key={thread.id} id={thread.id} title={thread.title} height={32} onDone={() => setRenaming(null)} />
+        : <SideRow key={thread.id} lead={{ kind: "dot", color: thread.id === current && chat.thread.busy ? p.data : p.line3 }} label={thread.title} on={thread.id === current} onClick={() => show(thread.id)} menu={() => threadMenu(chat, thread.id, thread.title, () => setRenaming(thread.id), () => show(thread.id))} />
+      ))}
+      {(hidden > 0 || all) && <SideRow lead={{ kind: "none" }} label={all ? "Show fewer" : `Show ${hidden} more`} onClick={() => setAll(!all)} />}
+    </SideSection>
+  );
+}
 
 type WorkItem = { readonly key: string; readonly label: string; readonly addr: string };
 

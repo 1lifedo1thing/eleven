@@ -115,7 +115,13 @@ export function useChat(target: Target | null, onTarget: (target: Target | null)
       return;
     }
   }, [project]);
-  const saved = all.filter((summary) => summary.project === project);
+  // A binary changed in place (an agent patching it) hashes to a new project; its chats stay with the file you picked.
+  const sameFile = useMemo(() => {
+    const opened = projects.find((entry) => entry.id === project);
+    if (!opened) return new Set<string | null>([project]);
+    return new Set<string | null>([project, ...projects.filter((entry) => entry.original === opened.original).map((entry) => entry.id)]);
+  }, [project, projects]);
+  const saved = all.filter((summary) => sameFile.has(summary.project));
   const { keepAgentsRunning } = useSettings().settings;
   const agentAt = (slot: number): AgentEntry => agents.list.find((agent) => agent.id === tabs.agentIds[slot]) ?? agents.selected;
   // The slot count never changes, so one useThread per slot keeps the hook order stable.
@@ -184,7 +190,7 @@ export function useChat(target: Target | null, onTarget: (target: Target | null)
     if (slot === undefined) return tooMany();
     at(slot).restore(found);
     setTabs((prev) => ({ ...prev, agentIds: replaced(prev.agentIds, slot, agents.selected.id) }));
-    if (found.project === project) return show(slot, target, [...tabs.order, slot]);
+    if (sameFile.has(found.project)) return show(slot, target, [...tabs.order, slot]);
     let next: Target | null = null;
     try {
       next = found.target ? prepareTarget(found.target) : null;

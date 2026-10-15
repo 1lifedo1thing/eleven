@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type ReactElement, useState } from "react";
@@ -11,7 +11,7 @@ process.env.ELEVEN_SUPPORT = mkdtempSync(join(tmpdir(), "eleven-window-"));
 
 const { saveThread, loadThread } = await import("../src/chat/history");
 const { useChat } = await import("../src/chat/useChat");
-const { projectId } = await import("../src/engine/project");
+const { projectId, rememberProject } = await import("../src/engine/project");
 const { prepareTarget } = await import("../src/engine/target");
 const { Screen } = await import("./harness");
 
@@ -85,4 +85,17 @@ test("window: a chat never leaves the project it joined, even when its file is d
   await screen.until(() => live().project === null, 10_000);
   expect(live().thread.id).not.toBe("ls-chat");
   expect(loadThread("ls-chat")?.project).toBe(projectId(ls));
+});
+
+test("window: chats stay listed after the binary changes in place, as long as it's the same file you picked", async () => {
+  const patched = join(process.env.ELEVEN_SUPPORT ?? "", "ls-patched");
+  writeFileSync(patched, Buffer.concat([readFileSync(ls.path), Buffer.from("patched")]));
+  const before = rememberProject({ ...ls, path: patched }, 1);
+  saveThread({ id: "before-patch", title: "before-patch", target: ls.original, project: before, messages: [{ kind: "user", text: "hi", at: 1 }], updatedAt: 2 });
+  live().openThread("ls-chat");
+  await screen.until(() => live().project === projectId(ls) && live().saved.length === 2, 10_000);
+  expect([...savedIds()].sort()).toEqual(["before-patch", "ls-chat"]);
+  live().openThread("before-patch");
+  await screen.until(() => live().thread.id === "before-patch", 10_000);
+  expect(live().project).toBe(projectId(ls));
 });
