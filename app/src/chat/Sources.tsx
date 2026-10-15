@@ -2,8 +2,10 @@ import { type ReactElement, useState } from "react";
 
 import { MenuSurface, MENU_RADIUS } from "../components/ui";
 import { stringField } from "../lib/guards";
+import { useLoaded } from "../lib/useLoaded";
 import { openLink } from "../settings/system";
 import { useTheme } from "../theme";
+import { favicon } from "./favicon";
 import type { Block } from "./thread";
 
 export type Source = { readonly href: string; readonly domain: string; readonly title: string | null };
@@ -42,6 +44,8 @@ export function sourcesOf(blocks: readonly Block[]): readonly Source[] {
 
 function Badge({ domain, size }: { readonly domain: string; readonly size: number }): ReactElement {
   const { p } = useTheme();
+  const icon = useLoaded(() => favicon(domain), domain);
+  if (icon.kind === "ready" && icon.value) return <img src={icon.value} objectFit="contain" style={{ width: size, height: size, flexShrink: 0, borderRadius: 3, pointerEvents: "none" }} />;
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: size, height: size, flexShrink: 0, borderRadius: size / 2, backgroundColor: p.sel2, fontSize: size * 0.6, fontWeight: 600, color: p.text3, pointerEvents: "none" }}>
       {domain.charAt(0).toUpperCase()}
