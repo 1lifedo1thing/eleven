@@ -16,7 +16,7 @@ out="$root/Eleven"
 res="$out/Resources"
 cache="$app_dir/build/cache"
 tarball="$app_dir/build/Eleven-$version-linux-x64.tar.gz"
-appimage="$app_dir/build/Eleven-$version-linux-x64.AppImage"
+appimage="$app_dir/build/Eleven-$version-x86_64.AppImage"
 node_version="${ELEVEN_NODE_VERSION:-$(node -v 2>/dev/null || echo v24.18.0)}"
 rizin_version="${RIZIN_VERSION:-v0.9.1}"
 
