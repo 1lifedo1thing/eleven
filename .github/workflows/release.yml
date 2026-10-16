@@ -124,7 +124,7 @@ jobs:
         with:
           bun-version: ${{ env.BUN_VERSION }}
       - name: Install build tools
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends python3-venv pkg-config
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends python3-venv pkg-config patchelf libxkbcommon-x11-0
       - name: Build REA
         working-directory: rea
         run: npm ci --no-audit --no-fund && npm run build:cached

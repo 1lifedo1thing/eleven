@@ -38,6 +38,14 @@ if [ -z "$native" ]; then
 fi
 cp "$native" "$res/gpuix-native.node"
 
+# GPUI's keyboard libraries are missing on many desktops; libxcb itself stays the system's.
+mkdir -p "$res/lib"
+for lib in libxkbcommon.so.0 libxkbcommon-x11.so.0 libxcb-xkb.so.1; do
+  cp -L "$(ldconfig -p | awk -v l="$lib" '$1 == l && /x86-64/ { print $NF; exit }')" "$res/lib/$lib"
+  patchelf --set-rpath '$ORIGIN' "$res/lib/$lib"
+done
+patchelf --set-rpath '$ORIGIN/lib' "$res/gpuix-native.node"
+
 # REA with only its runtime dependencies. Its node_modules must come from an install on Linux.
 rea_src="${ELEVEN_REA_SOURCE:-$repo/../rea}"
 if [ -f "$rea_src/scripts/rea.mjs" ]; then
