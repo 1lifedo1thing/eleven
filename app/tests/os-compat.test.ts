@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { hidePaths } from "../src/bridge/privacy";
 import { jdkVersion } from "../src/engine/toolchain";
 import { dataRoot } from "../src/lib/platform";
+import { launchLine, run } from "../src/lib/process";
 import { newestFirst } from "../src/lib/version";
 import { loadSkills } from "../src/skills/load";
 
@@ -38,4 +39,24 @@ test("playbooks saved with Windows line endings still read their name and descri
   const skill = loadSkills().find((candidate) => candidate.name === "crlf-playbook");
   expect(skill?.description).toBe("Saved on Windows");
   expect(skill?.body).toBe("Do the thing.");
+});
+
+test("Windows batch launchers start through cmd.exe with every argument escaped", () => {
+  const launch = launchLine("C:\\Program Files\\nodejs\\npx.cmd", ["-y", "a&b"], "win32");
+  expect(launch).toEqual({ file: 'C:\\Program^ Files\\nodejs\\npx.cmd ^^^"-y^^^" ^^^"a^^^&b^^^"', args: [], shell: true });
+  expect(launchLine("C:\\tools\\agent.exe", ["-y"], "win32")).toEqual({ file: "C:\\tools\\agent.exe", args: ["-y"], shell: false });
+  expect(launchLine("/usr/bin/npx", ["-y"], "darwin").shell).toBe(false);
+});
+
+test("percent signs reach a batch launcher unexpanded", () => {
+  expect(launchLine("C:\\x\\a.cmd", ["%USERNAME%"], "win32").file).toBe('C:\\x\\a.cmd ^^^"^^^%USERNAME^^^%^^^"');
+});
+
+test.skipIf(process.platform !== "win32")("a batch file in a folder with spaces gets its arguments as given", async () => {
+  const dir = join(mkdtempSync(join(tmpdir(), "eleven ")), "with space");
+  mkdirSync(dir);
+  const bat = join(dir, "echo.cmd");
+  writeFileSync(bat, "@echo off\r\necho %*\r\n");
+  const { stdout } = await run(bat, ["%USERNAME%", "a&b", "c d"]);
+  expect(stdout.trim()).toBe('"%USERNAME%" "a&b" "c d"');
 });
