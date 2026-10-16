@@ -19,6 +19,7 @@ const KIND: Readonly<Record<EditField, { readonly label: string; readonly done: 
   groups: { label: "Group", done: "Grouped", icon: "graph" },
   types: { label: "Change type", done: "Changed type", icon: "tag" },
   formats: { label: "Number format", done: "Changed format", icon: "hex" },
+  breakpoints: { label: "Breakpoint", done: "Added breakpoint", icon: "play" },
 };
 
 /** Suggestions decided before this window opened stay out of the chat. */

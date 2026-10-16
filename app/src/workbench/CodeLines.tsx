@@ -106,7 +106,7 @@ type Found = "no" | "match" | "current";
 function Breakpoint({ addr }: { readonly addr: string | null }): ReactElement {
   const { p } = useTheme();
   const { wb } = useBench();
-  const on = addr !== null && wb.s.breakpoints.includes(addr);
+  const on = addr !== null && wb.s.breakpoints.has(addr);
   if (addr === null) return <div style={{ width: 22, flexShrink: 0 }} />;
   return (
     <div onClick={() => wb.toggleBreakpoint(addr)} role="button" aria-label={`Breakpoint at ${addr}`} aria-selected={on} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 22, flexShrink: 0, cursor: "pointer", hover: { opacity: 0.72 } }}>

@@ -26,6 +26,10 @@ export type Debug = {
   readonly stepOut: () => void;
   readonly stepInstruction: () => void;
   readonly stop: () => void;
+  /** Starts the last session again the same way, launched or attached. */
+  readonly retry: () => void;
+  /** Replaces the breakpoints of the running session, if there is one. */
+  readonly syncBreakpoints: (breakAt: readonly string[]) => void;
   readonly loadVars: (reference: number) => Promise<readonly Variable[]>;
 };
 
@@ -37,6 +41,12 @@ function threadOf(body: unknown): number {
   return isRecord(body) && typeof body.threadId === "number" ? body.threadId : 1;
 }
 
+async function sendBreakpoints(dap: DapClient, breakAt: readonly string[]): Promise<void> {
+  const addresses = breakAt.filter((at) => /^0x[0-9a-f]+$/i.test(at));
+  await dap.setFunctionBreakpoints(breakAt.filter((at) => !addresses.includes(at)));
+  await dap.setInstructionBreakpoints(addresses);
+}
+
 function exitCode(body: unknown): number | null {
   return isRecord(body) && typeof body.exitCode === "number" ? body.exitCode : null;
 }
@@ -46,6 +56,7 @@ export function useDebug(): Debug {
   const [status, setStatus] = useState<DebugStatus>({ kind: "idle" });
   const client = useRef<DapClient | null>(null);
   const alive = useRef(true);
+  const last = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     alive.current = true;
@@ -97,10 +108,7 @@ export function useDebug(): Debug {
         await dap.initialize();
         const started = startRequest(dap);
         await initialized;
-        const addresses = breakAt.filter((at) => /^0x[0-9a-f]+$/i.test(at));
-        const names = breakAt.filter((at) => !addresses.includes(at));
-        if (names.length > 0) await dap.setFunctionBreakpoints(names);
-        if (addresses.length > 0) await dap.setInstructionBreakpoints(addresses);
+        await sendBreakpoints(dap, breakAt);
         await dap.configurationDone();
         await started;
         if (client.current === dap) set({ kind: "running" });
@@ -111,10 +119,20 @@ export function useDebug(): Debug {
   };
 
   const launch = (program: string, breakAt: readonly string[]): void => {
-    const { stopAtFunction, stopAtEntry, programArgs } = currentSettings();
-    begin((dap) => dap.launch({ program, args: splitArgs(programArgs), stopOnEntry: stopAtEntry }), stopAtFunction ? breakAt : []);
+    last.current = () => launch(program, breakAt);
+    const { stopAtEntry, programArgs } = currentSettings();
+    begin((dap) => dap.launch({ program, args: splitArgs(programArgs), stopOnEntry: stopAtEntry }), breakAt);
   };
-  const attach = (pid: number, breakAt: readonly string[]): void => begin((dap) => dap.attach(pid), breakAt);
+  const attach = (pid: number, breakAt: readonly string[]): void => {
+    last.current = () => attach(pid, breakAt);
+    begin((dap) => dap.attach(pid), breakAt);
+  };
+  const retry = (): void => last.current?.();
+  const syncBreakpoints = (breakAt: readonly string[]): void => {
+    const dap = client.current;
+    if (!dap || status.kind === "idle" || status.kind === "starting" || status.kind === "exited" || status.kind === "error") return;
+    void sendBreakpoints(dap, breakAt).catch(() => undefined);
+  };
 
   const step = (verb: "cont" | "over" | "in" | "out" | "instr"): void => {
     const dap = client.current;
@@ -138,5 +156,5 @@ export function useDebug(): Debug {
 
   const loadVars = (reference: number): Promise<readonly Variable[]> => client.current?.variables(reference) ?? Promise.resolve([]);
 
-  return { status, launch, attach, cont: () => step("cont"), stepOver: () => step("over"), stepIn: () => step("in"), stepOut: () => step("out"), stepInstruction: () => step("instr"), stop, loadVars };
+  return { status, launch, attach, cont: () => step("cont"), stepOver: () => step("over"), stepIn: () => step("in"), stepOut: () => step("out"), stepInstruction: () => step("instr"), stop, retry, syncBreakpoints, loadVars };
 }

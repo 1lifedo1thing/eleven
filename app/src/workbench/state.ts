@@ -38,7 +38,7 @@ export type UiState = {
   /** A listing and its pseudocode sit side by side, and selecting a line in one highlights the match in the other. */
   readonly linked: boolean;
   /** Instruction addresses the debugger stops at. */
-  readonly breakpoints: readonly string[];
+  readonly breakpoints: ReadonlyMap<string, string>;
   readonly navClosed: readonly NavSection[];
   readonly sizes: Sizes;
   readonly resizing: { readonly edge: Edge; readonly start: number; readonly from: number } | null;
@@ -136,7 +136,7 @@ export function initialState(panes: readonly Pane[], tree: PaneTree = rowOf(pane
   const trailTimes = trail.map(() => Date.now());
   return {
     panes, tree, focus: 0, seq: 10, filter: "", names: new Map(), bookmarks: [], notes: new Map(), trail, trailTimes, at: trail.length - 1,
-    sidebarOpen: true, docks, rightOpen: docks.right.length > 0, bottomOpen: false, right: docks.right[0] ?? "agent", bottom: docks.bottom[0] ?? "refs", showBytes: false, linked: false, breakpoints: [], navClosed: ["functions"], sizes: loadSizes(), resizing: null, paneDrag: null,
+    sidebarOpen: true, docks, rightOpen: docks.right.length > 0, bottomOpen: false, right: docks.right[0] ?? "agent", bottom: docks.bottom[0] ?? "refs", showBytes: false, linked: false, breakpoints: new Map(), navClosed: ["functions"], sizes: loadSizes(), resizing: null, paneDrag: null,
     renaming: null, renameDraft: "", patching: null, patchDraft: "", pickerOpen: false,
     paletteOpen: false, paletteQuery: "",
     comments: new Map(), colors: new Map(), types: new Map(), formats: new Map(), revision: 0, selected: null, commenting: null, commentDraft: "", refsOf: null, toast: null,
@@ -472,7 +472,7 @@ export function useWorkbenchState(panes: readonly Pane[], docks: Docks): Workben
     closePane: (pi: number) => setS((prev) => closePane(prev, pi)),
     moveTab: (pi: number, ti: number, by: 1 | -1) => setS((prev) => moveTab(prev, pi, ti, by)),
     resizePanes: (path: TreePath, index: number, weights: readonly [number, number]) => setS((prev) => resizePanes(prev, path, index, weights)),
-    toggleBreakpoint: (addr: string) => setS((prev) => ({ ...prev, breakpoints: prev.breakpoints.includes(addr) ? prev.breakpoints.filter((at) => at !== addr) : [...prev.breakpoints, addr] })),
+    toggleBreakpoint: (addr: string) => setS((prev) => ({ ...prev, breakpoints: editMap(prev.breakpoints, addr, prev.breakpoints.has(addr) ? "" : "on") })),
     besidePseudo: (addr: string) => setS((prev) => besidePseudo(prev, addr)),
     equalizePanes: () => setS((prev) => ({ ...prev, tree: equalize(prev.tree) })),
     setView: (pi: number, view: CodeMode) => setS((prev) => setView(prev, pi, view)),
@@ -488,8 +488,8 @@ export function useWorkbenchState(panes: readonly Pane[], docks: Docks): Workben
       return { ...prev, notes };
     }),
     restore: (project: Project) => {
-      for (const value of [project.names, project.bookmarks, project.notes, project.comments, project.colors, project.groups]) synced.add(value);
-      setS((prev) => ({ ...prev, names: project.names, bookmarks: project.bookmarks, notes: project.notes, comments: project.comments, colors: project.colors, groups: project.groups, types: project.types, formats: project.formats }));
+      for (const value of [project.names, project.bookmarks, project.notes, project.comments, project.colors, project.groups, project.breakpoints]) synced.add(value);
+      setS((prev) => ({ ...prev, names: project.names, bookmarks: project.bookmarks, notes: project.notes, comments: project.comments, colors: project.colors, groups: project.groups, types: project.types, formats: project.formats, breakpoints: project.breakpoints }));
     },
     showTabs: (saved: ThreadTabs) => setS((prev) => {
       let seq = prev.seq;

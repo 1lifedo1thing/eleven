@@ -86,3 +86,11 @@ test("history: a suggestion changes nothing until accepted, and a declined one n
   expect(undo(id)?.id).toBe(patch.id);
   expect(loadProject(id).patches).toEqual([]);
 });
+
+test("edits: breakpoints are saved with the project and can be undone", () => {
+  const id = "breakpoints";
+  updateProject(id, (project) => ({ ...project, breakpoints: new Map([["0x100003e68", "on"]]) }), YOU);
+  expect([...loadProject(id).breakpoints]).toEqual([["0x100003e68", "on"]]);
+  undo(id);
+  expect(loadProject(id).breakpoints.size).toBe(0);
+});

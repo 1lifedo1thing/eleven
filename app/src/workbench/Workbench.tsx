@@ -212,8 +212,8 @@ function useBenchValue(program: Program, onBack: () => void, openTarget: (target
       return;
     }
     const mine = <T extends object>(local: T, saved: T): T => (fromProject(local) ? saved : local);
-    if (program.functions.length > 0) updateProject(program.id, (project) => ({ ...project, names: mine(s.names, project.names), bookmarks: mine(s.bookmarks, project.bookmarks), notes: mine(s.notes, project.notes), comments: mine(s.comments, project.comments), colors: mine(s.colors, project.colors), groups: mine(s.groups, project.groups) }), YOU);
-  }, [s.names, s.bookmarks, s.notes, s.comments, s.colors, s.groups]);
+    if (program.functions.length > 0) updateProject(program.id, (project) => ({ ...project, names: mine(s.names, project.names), bookmarks: mine(s.bookmarks, project.bookmarks), notes: mine(s.notes, project.notes), comments: mine(s.comments, project.comments), colors: mine(s.colors, project.colors), groups: mine(s.groups, project.groups), breakpoints: mine(s.breakpoints, project.breakpoints) }), YOU);
+  }, [s.names, s.bookmarks, s.notes, s.comments, s.colors, s.groups, s.breakpoints]);
   useThreadTabs(wb, chat.thread.id, chat.thread.state.messages.length > 0, program);
   useEffect(() => onLayoutReset(() => wb.patch({ sizes: DEFAULT_SIZES })), []);
   useEffect(() => saveDocks(s.docks), [s.docks]);

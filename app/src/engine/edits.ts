@@ -6,7 +6,7 @@ import { describeType } from "./codeTypes";
 import { describeFormat } from "./operands";
 import type { BlockGroup, Project } from "./project";
 
-export const EDIT_FIELDS = ["names", "notes", "comments", "colors", "bookmarks", "patches", "groups", "types", "formats"] as const;
+export const EDIT_FIELDS = ["names", "notes", "comments", "colors", "bookmarks", "patches", "groups", "types", "formats", "breakpoints"] as const;
 
 export type EditField = (typeof EDIT_FIELDS)[number];
 
@@ -57,6 +57,7 @@ export function fieldMap(project: Project, field: EditField): ReadonlyMap<string
     case "colors":
     case "types":
     case "formats":
+    case "breakpoints":
       return project[field];
     case "bookmarks":
       return new Map(project.bookmarks.map((mark) => [mark.addr, mark.label]));
@@ -80,6 +81,7 @@ function withField(project: Project, field: EditField, map: ReadonlyMap<string, 
     case "colors":
     case "types":
     case "formats":
+    case "breakpoints":
       return { ...project, [field]: map };
     case "bookmarks":
       return { ...project, bookmarks: entries.map(([addr, label]) => ({ addr, label })) };
@@ -207,6 +209,8 @@ export function describeEdit(edit: Edit, nameOf: (addr: string) => string, origi
       return after === null ? `Put ${key} back to how it was read` : `Marked ${key} as ${describeType(after)}`;
     case "formats":
       return after === null ? `Showed the number at ${key} as it was` : `Showed the number at ${key} as ${describeFormat(after)}`;
+    case "breakpoints":
+      return after === null ? `Removed the breakpoint at ${key}` : `Added a breakpoint at ${key}`;
     default: {
       const unhandled: never = field;
       return unhandled;
