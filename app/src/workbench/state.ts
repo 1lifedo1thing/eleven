@@ -39,6 +39,8 @@ export type UiState = {
   readonly linked: boolean;
   /** Instruction addresses the debugger stops at. */
   readonly breakpoints: ReadonlyMap<string, string>;
+  /** The instruction the debugger is paused at. */
+  readonly debugPc: string | null;
   readonly navClosed: readonly NavSection[];
   readonly sizes: Sizes;
   readonly resizing: { readonly edge: Edge; readonly start: number; readonly from: number } | null;
@@ -136,7 +138,7 @@ export function initialState(panes: readonly Pane[], tree: PaneTree = rowOf(pane
   const trailTimes = trail.map(() => Date.now());
   return {
     panes, tree, focus: 0, seq: 10, filter: "", names: new Map(), bookmarks: [], notes: new Map(), trail, trailTimes, at: trail.length - 1,
-    sidebarOpen: true, docks, rightOpen: docks.right.length > 0, bottomOpen: false, right: docks.right[0] ?? "agent", bottom: docks.bottom[0] ?? "refs", showBytes: false, linked: false, breakpoints: new Map(), navClosed: ["functions"], sizes: loadSizes(), resizing: null, paneDrag: null,
+    sidebarOpen: true, docks, rightOpen: docks.right.length > 0, bottomOpen: false, right: docks.right[0] ?? "agent", bottom: docks.bottom[0] ?? "refs", showBytes: false, linked: false, breakpoints: new Map(), debugPc: null, navClosed: ["functions"], sizes: loadSizes(), resizing: null, paneDrag: null,
     renaming: null, renameDraft: "", patching: null, patchDraft: "", pickerOpen: false,
     paletteOpen: false, paletteQuery: "",
     comments: new Map(), colors: new Map(), types: new Map(), formats: new Map(), revision: 0, selected: null, commenting: null, commentDraft: "", refsOf: null, toast: null,

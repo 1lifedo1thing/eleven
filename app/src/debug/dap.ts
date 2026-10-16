@@ -14,7 +14,9 @@ export type LaunchConfig = {
   readonly stopOnEntry?: boolean;
 };
 
-export type StackFrame = { readonly id: number; readonly name: string; readonly line: number; readonly source: string | null };
+export type StackFrame = { readonly id: number; readonly name: string; readonly line: number; readonly source: string | null; readonly pc: string | null };
+
+export type Thread = { readonly id: number; readonly name: string };
 
 export type Variable = { readonly name: string; readonly value: string; readonly reference: number };
 
@@ -138,8 +140,25 @@ export class DapClient {
     return frames.flatMap((item) => {
       if (!isRecord(item) || typeof item.id !== "number") return [];
       const source = isRecord(item.source) && typeof item.source.path === "string" ? item.source.path : null;
-      return [{ id: item.id, name: typeof item.name === "string" ? item.name : "", line: typeof item.line === "number" ? item.line : 0, source }];
+      const pc = typeof item.instructionPointerReference === "string" ? item.instructionPointerReference : null;
+      return [{ id: item.id, name: typeof item.name === "string" ? item.name : "", line: typeof item.line === "number" ? item.line : 0, source, pc }];
     });
+  }
+
+  pause(threadId: number): Promise<unknown> {
+    return this.request("pause", { threadId });
+  }
+
+  async threads(): Promise<readonly Thread[]> {
+    const body = await this.request("threads");
+    const list = isRecord(body) && Array.isArray(body.threads) ? body.threads : [];
+    return list.flatMap((item) => (isRecord(item) && typeof item.id === "number" ? [{ id: item.id, name: typeof item.name === "string" ? item.name : `Thread ${item.id}` }] : []));
+  }
+
+  /** Runs an expression in the stopped frame, the way you would type it at the lldb prompt. */
+  async evaluate(expression: string, frameId: number | null): Promise<string> {
+    const body = await this.request("evaluate", { expression, context: "repl", ...(frameId === null ? {} : { frameId }) });
+    return isRecord(body) && typeof body.result === "string" ? body.result : "";
   }
 
   async scopes(frameId: number): Promise<readonly Scope[]> {

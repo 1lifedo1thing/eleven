@@ -7,8 +7,8 @@ import { join } from "node:path";
 import { findLldbDap } from "../src/debug/adapter";
 import { DapClient, type DapEvent } from "../src/debug/dap";
 
-const SOURCE = ["int main(void) {", "  int answer = 42;", "  return answer - 42;", "}", ""].join("\n");
-const BREAK_LINE = 3;
+const SOURCE = ["#include <stdio.h>", "int main(void) {", "  int answer = 42;", "  puts(\"hello from tiny\");", "  return answer - 42;", "}", ""].join("\n");
+const BREAK_LINE = 5;
 
 class Events {
   private readonly seen: DapEvent[] = [];
@@ -69,12 +69,18 @@ run("M9: lldb-dap launches a program, stops at a breakpoint, reads a local, and 
     const locals = scopes.find((s) => /local/i.test(s.name)) ?? scopes[0];
     const vars = locals ? await client.variables(locals.reference) : [];
     expect(vars.find((v) => v.name === "answer")?.value).toBe("42");
+    expect(frames[0]?.pc).toMatch(/^0x[0-9a-f]+$/);
+    expect(scopes.some((s) => /register/i.test(s.name))).toBe(true);
+    expect((await client.threads()).some((t) => t.id === tid)).toBe(true);
+    expect(await client.evaluate("answer + 1", frames[0]?.id ?? null)).toContain("43");
 
     await client.next(tid, "instruction");
     await events.wait("stopped");
 
     await client.continue(tid);
     await events.wait("exited");
+    const printed = await events.wait("output");
+    expect(JSON.stringify(printed.body)).toContain("hello");
   } finally {
     await client.disconnect();
   }

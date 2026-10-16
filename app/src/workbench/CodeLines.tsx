@@ -4,6 +4,7 @@ import { type ReactElement, type RefObject, useEffect, useMemo, useRef } from "r
 import { colorize, type Syntax, tokenize } from "../components/code";
 import { type Span, useSpans } from "../components/highlight";
 import { ErrorCard, Tooltip } from "../components/kit";
+import { Icon } from "../components/ui";
 import { LIGHT, type Palette, useTheme } from "../theme";
 import { useListWindow } from "../lib/useListWindow";
 import { useLoaded } from "../lib/useLoaded";
@@ -102,15 +103,20 @@ function JumpMargin({ pieces, lanes, height, active }: { readonly pieces: readon
 
 type Found = "no" | "match" | "current";
 
-/** A red dot in the margin of an instruction: click to stop the debugger there. */
-function Breakpoint({ addr }: { readonly addr: string | null }): ReactElement {
+function sameAddress(a: string, b: string): boolean {
+  const bare = (addr: string): string => addr.toLowerCase().replace(/^0x/, "").replace(/^0+/, "");
+  return bare(a) === bare(b);
+}
+
+/** A red dot in the margin of an instruction: click to stop the debugger there. An arrow marks where it is paused. */
+function Breakpoint({ addr, paused }: { readonly addr: string | null; readonly paused: boolean }): ReactElement {
   const { p } = useTheme();
   const { wb } = useBench();
   const on = addr !== null && wb.s.breakpoints.has(addr);
   if (addr === null) return <div style={{ width: 22, flexShrink: 0 }} />;
   return (
     <div onClick={() => wb.toggleBreakpoint(addr)} role="button" aria-label={`Breakpoint at ${addr}`} aria-selected={on} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 22, flexShrink: 0, cursor: "pointer", hover: { opacity: 0.72 } }}>
-      <div style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: on ? p.error : "transparent", pointerEvents: "none" }} />
+      {paused ? <Icon name="play" size={11} color={on ? p.error : p.data} /> : <div style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: on ? p.error : "transparent", pointerEvents: "none" }} />}
     </div>
   );
 }
@@ -158,6 +164,7 @@ function Line({ fn, view, text, number, focused, margin, found = "no", spans = n
   const sel = wb.s.selected;
   const linked = wb.s.linked && sel?.kind === "line" && sel.fn === fn && sel.view !== view && linkedMatch(sel.text, text);
   const picked = sel ? isPicked(sel, fn, view, number, here) || linked : focused;
+  const paused = here !== null && wb.s.debugPc !== null && sameAddress(here, wb.s.debugPc);
   const comment = here ? wb.s.comments.get(here) : undefined;
   const subject = (token: Token | null): Subject => ({ kind: "line", fn, view, number, text, addr: here, token });
   const ranged = inRange(wb.s.lineRange, fn, view, number);
@@ -181,8 +188,8 @@ function Line({ fn, view, text, number, focused, margin, found = "no", spans = n
   const lit = highlightedWord(wb.s.selected, fn);
   const glow = (text: string): StyleDesc => (lit !== null && text === lit ? { backgroundColor: p.sel2, borderRadius: 3 } : {});
   const row = (
-    <div role="row" aria-label={`Line ${number}`} aria-selected={picked} style={{ display: "flex", userSelect: "text", fontFamily: look.family, fontSize: look.size, lineHeight: look.lineHeight, ...lineTint(found, picked, ranged, p) }}>
-      {view === "asm" && <Breakpoint addr={here} />}
+    <div role="row" aria-label={`Line ${number}`} aria-selected={picked} style={{ display: "flex", userSelect: "text", fontFamily: look.family, fontSize: look.size, lineHeight: look.lineHeight, ...lineTint(found, picked, ranged, p), ...(paused ? { backgroundColor: p.sel2 } : {}) }}>
+      {view === "asm" && <Breakpoint addr={here} paused={paused} />}
       {gutter ? <div {...subjectMenu(bench, subject(null), (event) => pick(null, event))} style={{ position: "relative", display: "flex", justifyContent: "flex-end", width: 50, flexShrink: 0, paddingRight: 16, color: picked ? p.text : p.gutter, userSelect: "none" }}>{ask?.pinned && <PinDot />}{String(number)}</div> : <div {...subjectMenu(bench, subject(null), (event) => pick(null, event))} style={{ width: 16, flexShrink: 0 }} />}
       {margin}
       {bytes !== null && <div style={{ width: 104, flexShrink: 0, color: p.faint, whiteSpace: "nowrap", overflow: "hidden" }}>{bytes}</div>}
