@@ -14,7 +14,7 @@ export function reaToolName(tool: string): string | null {
   return name === tool ? null : name;
 }
 
-const READ_ONLY_ELEVEN = ["open_function", "current_view", "set_view", "list_marks"] as const;
+const READ_ONLY_ELEVEN = ["open_function", "current_view", "set_view", "list_marks", "debug_state"] as const;
 
 function elevenToolName(tool: string): string | null {
   const name = tool.replace(/^mcp__eleven__/, "").replace(/^eleven[_:.]+/, "");
@@ -23,7 +23,7 @@ function elevenToolName(tool: string): string | null {
 
 const SUGGESTS_ELEVEN = ["propose_patch"] as const;
 
-const EDITS_ELEVEN = ["rename_function", "add_note", "add_comment", "bookmark", "set_code_type", "set_number_format"] as const;
+const EDITS_ELEVEN = ["rename_function", "add_note", "add_comment", "bookmark", "set_code_type", "set_number_format", "set_breakpoint"] as const;
 
 /** Eleven tools that only file a suggestion for review, so asking first would make the user approve it twice. */
 export function onlySuggests(tool: string, reviewAgentEdits: boolean): boolean {
@@ -36,6 +36,7 @@ const TOOL_KIND: Readonly<Record<string, PermissionTool>> = {
   open_function: "view", current_view: "view", set_view: "view", list_marks: "view",
   rename_function: "rename", add_note: "notes", add_comment: "notes", bookmark: "notes", set_code_type: "notes", set_number_format: "notes",
   propose_patch: "patch", gpu_profile: "gpu",
+  debug_state: "view", debug_control: "debug", debug_evaluate: "debug", set_breakpoint: "debug",
 };
 
 /** Which row of the Permissions page governs a tool call. */

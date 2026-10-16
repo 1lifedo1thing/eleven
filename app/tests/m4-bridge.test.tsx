@@ -22,7 +22,7 @@ const PROJECT = join(homedir(), "Library", "Application Support", "Eleven", "pro
 let screen: Screen;
 let client: Client;
 
-async function call(name: string, args: Record<string, string> = {}): Promise<string> {
+async function call(name: string, args: Record<string, string | boolean> = {}): Promise<string> {
   const reply = await client.callTool({ name, arguments: args });
   const content = Array.isArray(reply.content) ? reply.content : [];
   const first: unknown = content[0];
@@ -71,4 +71,13 @@ test("M4: the agent's edits are logged under its name, and its patches wait for 
   await expect(call("propose_patch", { address: "0x1000016d8", bytes: "xyz", reason: "" })).rejects.toThrow("hex bytes");
   accept(LS_ID, pending(loadProject(LS_ID)).map((edit) => edit.id));
   expect(loadProject(LS_ID).patches).toEqual([{ addr: "0x1000016d8", bytes: "c0 03 5f d6" }]);
+}, 60_000);
+
+test("M9: the agent sets breakpoints in the project, and can only drive a session the user started", async () => {
+  expect(await call("set_breakpoint", { address: "0x1000016d8", on: true })).toContain("Added a breakpoint at 0x1000016d8");
+  expect(loadProject(LS_ID).breakpoints.get("0x1000016d8")).toBe("on");
+  expect(await call("debug_state")).toContain("Ask the user to press Debug");
+  await expect(call("debug_control", { action: "continue" })).rejects.toThrow("only they can start the program");
+  expect(await call("set_breakpoint", { address: "0x1000016d8", on: false })).toContain("Removed");
+  expect(loadProject(LS_ID).breakpoints.has("0x1000016d8")).toBe(false);
 }, 60_000);

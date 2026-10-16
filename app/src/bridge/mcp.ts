@@ -88,5 +88,20 @@ export async function runMcp(): Promise<void> {
   server.registerTool("gpu_profile", {
     description: "The newest GPU recording of the open app (Metal System Trace): frame time, how busy the GPU is, gaps between frames, and what the numbers suggest fixing.",
   }, () => run("gpu_profile", {}));
+  server.registerTool("debug_state", {
+    description: "The user's debug session in Eleven: whether the program is running or paused, where it is paused, the call stack, locals, registers and the newest program output.",
+  }, () => run("debug_state", {}));
+  server.registerTool("debug_control", {
+    description: "Continue, pause or step the program in the user's debug session, then report where it is. Only works on a session the user started; you can't launch programs.",
+    inputSchema: { action: z.enum(["continue", "pause", "step_over", "step_into", "step_out", "step_instruction"]) },
+  }, ({ action }) => run("debug_control", { action }));
+  server.registerTool("debug_evaluate", {
+    description: "Evaluate an lldb expression in the paused frame of the user's debug session, like x0, answer + 1 or *(int *)$sp. The user sees it in the Output tab.",
+    inputSchema: { expression: z.string() },
+  }, ({ expression }) => run("debug_evaluate", { expression }));
+  server.registerTool("set_breakpoint", {
+    description: "Add or remove a breakpoint at an instruction address in the user's Eleven project. It applies right away to a running session and the user can undo it.",
+    inputSchema: { address: z.string().describe("Hexadecimal, like 0x100003f2c"), on: z.boolean().describe("false removes it") },
+  }, (args) => run("set_breakpoint", { address: args.address, on: String(args.on) }));
   await server.connect(new StdioServerTransport());
 }

@@ -1,6 +1,7 @@
 import { basename } from "node:path";
 
 import { bundleExecutable } from "../gpu/live";
+import { DEBUG_ACTIONS, debugControl, isDebugAction } from "../debug/live";
 import { describeFindings, listRuns, readGpuRun } from "../gpu/trace";
 import type { Chat } from "../chat/useChat";
 import { loadProcedures, type Procedure } from "../engine/procedures";
@@ -14,6 +15,8 @@ import { describeFormat, isOperandFormat, OPERAND_FORMATS } from "../engine/oper
 import { parseBytes } from "../workbench/patch";
 import type { BridgeCaller, BridgeTool } from "./protocol";
 import { currentView, switchView, type ViewName } from "./view";
+
+const NO_SESSION = "There is no debug session. Ask the user to press Debug in the workbench; only they can start the program.";
 
 const VIEWS: readonly ViewName[] = ["pseudocode", "assembly", "graph", "hex"];
 
@@ -124,6 +127,27 @@ export function bridgeHandler(chat: () => Chat): (tool: BridgeTool, args: Readon
         const trace = exe ? listRuns(basename(exe))[0] : undefined;
         if (!trace) return "There's no GPU recording of this app yet. Ask the user to press Record a GPU run in the workbench sidebar.";
         return describeFindings((await readGpuRun(trace, "")).findings);
+      }
+      case "debug_state":
+        return (await debugControl()?.describe()) ?? NO_SESSION;
+      case "debug_control": {
+        const action = (args.action ?? "").trim();
+        if (!isDebugAction(action)) throw new Error(`Pick one of ${DEBUG_ACTIONS.join(", ")}.`);
+        const control = debugControl();
+        if (!control) throw new Error(NO_SESSION);
+        return control.act(action);
+      }
+      case "debug_evaluate": {
+        const control = debugControl();
+        if (!control) throw new Error(NO_SESSION);
+        const expression = (args.expression ?? "").trim();
+        if (!expression) throw new Error("Give an expression, like x0 or *(int *)$sp.");
+        return control.evaluate(expression);
+      }
+      case "set_breakpoint": {
+        const address = hexAddress(args.address);
+        const on = args.on !== "false";
+        return agentEdit(id, by, "breakpoints", address, on ? "on" : null, on ? `Added a breakpoint at ${address}.` : `Removed the breakpoint at ${address}.`);
       }
       default: {
         const unhandled: never = tool;
