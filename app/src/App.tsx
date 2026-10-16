@@ -13,7 +13,7 @@ import { listenForReplies, onOpenChat } from "./notify/notify";
 import { runCommand, useCommand } from "./lib/shortcuts";
 import type { Page } from "./settings/pages";
 import { onOpenSettings } from "./settings/open";
-import { openLink, RELEASE_NOTES } from "./settings/system";
+import { openLink, RELEASE_NOTES, SPONSOR } from "./settings/system";
 import { SettingsScreen } from "./settings/SettingsScreen";
 import { currentSettings, loadSettings, saveSettings, type Settings, useSettings } from "./settings/store";
 import { listProjects } from "./engine/project";
@@ -151,6 +151,8 @@ export function App({ initial }: { readonly initial: Target | null }): ReactElem
         return openSettingsAt("keyboard");
       case "whatsNew":
         return openLink(RELEASE_NOTES);
+      case "support":
+        return openLink(SPONSOR);
       default: {
         const unhandled: never = item;
         return unhandled;

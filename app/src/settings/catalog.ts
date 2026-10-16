@@ -19,7 +19,7 @@ import type { Info } from "./info";
 import type { Action, Confirm, Control, GroupModel, Lead, Option, SettingRowModel } from "./model";
 import type { Page } from "./pages";
 import { DEFAULT_SETTINGS, type PathKey, PERMISSION_TOOLS, type PermissionLevel, type PermissionTool, saveSettings, type Settings, SETTINGS_FILE } from "./store";
-import { openLink, pickPath, RELEASE_NOTES, showInFinder, tildePath } from "./system";
+import { openLink, pickPath, RELEASE_NOTES, showInFinder, SPONSOR, tildePath } from "./system";
 import { ASSETS } from "../lib/assets";
 import { dataRoot, FILE_MANAGER, OS, THIS_DEVICE } from "../lib/platform";
 import { MOD } from "../lib/platform";
@@ -478,6 +478,7 @@ export function buildPages(c: Ctx): Readonly<Record<Page, readonly GroupModel[]>
       { label: null, rows: [
         info("Eleven", `Version ${app.version} (${process.arch === "arm64" ? "Apple silicon" : "Intel"}). ${app.short}`, { lead: { kind: "img", src: appIcon(c.icon) }, buttons: app.download ? [btn("Download", () => openLink(app.download ?? ""), "primary")] : [btn("Check for updates", c.checkApp)] }),
         info("What’s new", "Notes for every release.", { buttons: [btn("Open", () => { openLink(RELEASE_NOTES); c.toast("Opened the release notes"); })] }),
+        info("Support Eleven", "Eleven is free and built by one person. Sponsoring pays for signed builds, Linux support and new features.", { keywords: "donate sponsor fund", buttons: [btn("Sponsor", () => { openLink(SPONSOR); c.toast("Opened in your browser"); })] }),
       ] },
       { label: "Help", rows: [
         info("Run setup again", "Install engines and agents, and pick shortcuts.", { buttons: [btn("Start", c.setup)] }),

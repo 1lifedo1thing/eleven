@@ -15,7 +15,7 @@ export type MenuContext = {
 };
 
 /** Items that are neither commands nor menu actions. */
-export const APP_ITEMS = ["about", "updates", "shortcuts", "whatsNew", "report"] as const;
+export const APP_ITEMS = ["about", "updates", "shortcuts", "whatsNew", "support", "report"] as const;
 
 export type AppItem = (typeof APP_ITEMS)[number];
 
@@ -169,6 +169,7 @@ export function menuBar(ctx: MenuContext): MenuSpec[] {
     { label: "Help", items: [
       app("shortcuts", "Keyboard Shortcuts"),
       app("whatsNew", "What’s New in Eleven"),
+      app("support", "Support Eleven…"),
       SEPARATOR,
       app("report", "Report a Problem…"),
     ] },

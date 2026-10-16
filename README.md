@@ -42,6 +42,10 @@ Native code is read by [Ghidra](https://ghidra-sre.org) through [REA](https://gi
 - **Playbooks.** Built-in skills such as first look, name functions, trace a feature and network map work with any agent.
 - **Export.** Pseudocode, assembly, control-flow graphs as PDF and Objective-C class inventories.
 
+## Support Eleven
+
+Eleven is free and built by one person. If it saves you time, [sponsoring on GitHub](https://github.com/sponsors/Zfinix) keeps it going. It pays for notarized builds, a Linux release and the debugger, and you can see what's coming next.
+
 ## Install
 
 **macOS** 14 or later on Apple Silicon:

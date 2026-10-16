@@ -22,6 +22,7 @@ export function showInFinder(path: string): void {
 }
 
 export const RELEASE_NOTES = "https://github.com/Zfinix/eleven/releases";
+export const SPONSOR = "https://github.com/sponsors/Zfinix";
 
 export function openLink(url: string): void {
   openExternal(url);
