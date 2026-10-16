@@ -94,7 +94,6 @@ Bunların tümü isteğe bağlıdır. Eleven olağan kurulum konumlarını kendi
 ## Depo
 
 - `app/` uygulamadır: GPUIX üzerinde React ve TypeScript.
-- `crates/` referans için saklanan daha eski bir Rust prototipidir. Uygulama bunu kullanmaz.
 - `launch/` Remotion ile yapılmış tanıtım videosudur.
 - `install.sh` kurucudur.
 

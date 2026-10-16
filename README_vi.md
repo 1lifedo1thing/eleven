@@ -94,7 +94,6 @@ Tất cả đều là tùy chọn. Eleven tự tìm các vị trí cài đặt t
 ## Kho mã
 
 - `app/` là ứng dụng: React và TypeScript trên GPUIX.
-- `crates/` là bản prototype Rust trước đó, giữ lại để tham khảo. Ứng dụng không dùng nó.
 - `launch/` là video ra mắt, làm bằng Remotion.
 - `install.sh` là trình cài đặt.
 

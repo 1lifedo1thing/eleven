@@ -94,7 +94,6 @@ bun run dev
 ## المستودع
 
 - `app/` هو التطبيق: React وTypeScript على GPUIX.
-- `crates/` نموذج أولي سابق بـ Rust، محفوظ للرجوع إليه. التطبيق لا يستخدمه.
 - `launch/` فيديو الإطلاق، صُنع بـ Remotion.
 - `install.sh` هو المثبّت.
 

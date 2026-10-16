@@ -94,7 +94,6 @@ Todas são opcionais. O Eleven encontra sozinho os locais de instalação usuais
 ## Repositório
 
 - `app/` é o aplicativo: React e TypeScript no GPUIX.
-- `crates/` é um protótipo anterior em Rust, mantido como referência. O aplicativo não o usa.
 - `launch/` é o vídeo de lançamento, feito com Remotion.
 - `install.sh` é o instalador.
 

@@ -94,7 +94,6 @@ bun run dev
 ## 저장소 구조
 
 - `app/`은 앱입니다. GPUIX 위의 React와 TypeScript.
-- `crates/`는 참고용으로 남겨 둔 초기 Rust 프로토타입입니다. 앱은 이것을 사용하지 않습니다.
 - `launch/`는 Remotion으로 만든 시작 영상입니다.
 - `install.sh`는 설치 프로그램입니다.
 

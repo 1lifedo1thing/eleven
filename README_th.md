@@ -94,7 +94,6 @@ bun run dev
 ## รีโพซิทอรี
 
 - `app/` คือตัวแอป: React และ TypeScript บน GPUIX
-- `crates/` คือต้นแบบ Rust รุ่นก่อน เก็บไว้เป็นข้อมูลอ้างอิง ตัวแอปไม่ได้ใช้
 - `launch/` คือวิดีโอเปิดตัว ทำด้วย Remotion
 - `install.sh` คือตัวติดตั้ง
 

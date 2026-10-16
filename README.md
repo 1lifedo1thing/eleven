@@ -116,7 +116,6 @@ All of these are optional. Eleven finds the usual install spots on its own.
 ## Repository
 
 - `app/` is the app: React and TypeScript on GPUIX.
-- `crates/` is an earlier Rust prototype, kept for reference. The app does not use it.
 - `launch/` is the launch video, made with Remotion.
 - `install.sh` is the installer.
 

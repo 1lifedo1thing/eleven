@@ -94,7 +94,6 @@ Alles hier ist optional. Eleven findet die üblichen Installationsorte von selbs
 ## Projektstruktur
 
 - `app/` ist die App: React und TypeScript auf GPUIX.
-- `crates/` ist ein früherer Rust-Prototyp, der als Referenz erhalten bleibt. Die App nutzt ihn nicht.
 - `launch/` ist das Launch-Video, erstellt mit Remotion.
 - `install.sh` ist der Installer.
 

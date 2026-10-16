@@ -94,7 +94,6 @@ bun run dev
 ## リポジトリ構成
 
 - `app/` はアプリ本体です。GPUIX 上の React と TypeScript。
-- `crates/` は初期の Rust プロトタイプで、参考として残しています。アプリはこれを使用しません。
 - `launch/` は Remotion で制作したローンチ動画です。
 - `install.sh` はインストーラです。
 

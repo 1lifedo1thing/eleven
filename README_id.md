@@ -94,7 +94,6 @@ Semua ini opsional. Eleven menemukan lokasi pemasangan yang umum dengan sendirin
 ## Repositori
 
 - `app/` adalah aplikasinya: React dan TypeScript di atas GPUIX.
-- `crates/` adalah prototipe Rust yang lebih awal, disimpan sebagai referensi. Aplikasi tidak memakainya.
 - `launch/` adalah video peluncuran, dibuat dengan Remotion.
 - `install.sh` adalah installer.
 

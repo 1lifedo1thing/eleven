@@ -94,7 +94,6 @@ bun run dev
 ## 儲存庫結構
 
 - `app/` 是應用程式本身：使用 React 和 TypeScript，基於 GPUIX。
-- `crates/` 是早期的 Rust 原型，保留作為參考。應用程式並不使用它。
 - `launch/` 是發布影片，以 Remotion 製作。
 - `install.sh` 是安裝程式。
 

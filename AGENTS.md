@@ -6,7 +6,6 @@ Any ACP agent works through REA (Ghidra headless) and Eleven's own tools.
 ## Layout
 
 - `app/` is the app: React + TypeScript rendered natively by GPUIX (React on GPUI).
-- `crates/` is the earlier Rust/GPUI prototype (`eleven-engine`, `eleven-acp`, `eleven`). Kept for reference; the app does not use it.
 - `app/src/`
   - `App.tsx`: screen routing (home, setup, settings, workbench). Home stays mounted underneath.
   - `Shell.tsx`: every screen renders inside it (frosted window, side column, solid card).
